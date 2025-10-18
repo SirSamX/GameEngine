@@ -1,11 +1,19 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include <iostream>
+#include <format>
+#include <unordered_map>
 #include "Shader.h"
 #include "stb_image.h"
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
 
 bool wireframe = false;
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
@@ -14,71 +22,90 @@ glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
 
 bool cursorLock = true;
 bool firstMouse = true;
-float yaw   = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
+float yaw   = -90.0f;
 float pitch =  0.0f;
 float lastX =  800.0f / 2.0;
 float lastY =  600.0 / 2.0;
 float fov   =  45.0f;
+float cameraSpeed = 15.0f;
 
-float deltaTime = 0.0f;	// time between current frame and last frame
-float lastFrame = 0.0f;
+bool debugWindow = false;
+bool vsyncEnabled = true;
 
-void processInput(GLFWwindow *window, Shader& shader)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
+struct KeyState {
+    bool pressed = false;
+    bool justPressed = false;
+};
+
+std::unordered_map<int, KeyState> keys;
+
+void updateKeys(GLFWwindow* window) {
+    for (auto& [key, state] : keys) {
+        bool isPressedNow = glfwGetKey(window, key) == GLFW_PRESS;
+        state.justPressed = isPressedNow && !state.pressed;
+        state.pressed = isPressedNow;
+    }
+}
+
+bool keyJustPressed(int key) {
+    return keys[key].justPressed;
+}
+
+bool keyPressed(int key) {
+    return keys[key].pressed;
+}
+
+void processInput(GLFWwindow *window, Shader& shader) {
+    updateKeys(window);
+
+    // Exit
+    if (keyJustPressed(GLFW_KEY_ESCAPE)) {
         cursorLock = !cursorLock;
         if (cursorLock) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         } else {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
-        while (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            glfwPollEvents();
-        }
     }
 
-    if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+    // Debug Keys
+    if (keyJustPressed(GLFW_KEY_X))
         glfwSetWindowShouldClose(window, true);
-
-    if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS)
-        shader.reload();
-
-    if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS) {
+    if (keyJustPressed(GLFW_KEY_F1)) {
         wireframe = !wireframe;
         if (wireframe)
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         else
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        while (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS) {
-            glfwPollEvents();
-        }
     }
+    if (keyJustPressed(GLFW_KEY_F2))
+        shader.reload();
+    if (keyJustPressed(GLFW_KEY_F3))
+        debugWindow = !debugWindow;
 
-    const float cameraSpeed = 15.0f * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraUp;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraUp;
+    // Camera movement
+    float camSpeed = cameraSpeed * deltaTime;
+    if (keyPressed(GLFW_KEY_W))
+        cameraPos += camSpeed * cameraFront;
+    if (keyPressed(GLFW_KEY_S))
+        cameraPos -= camSpeed * cameraFront;
+    if (keyPressed(GLFW_KEY_A))
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * camSpeed;
+    if (keyPressed(GLFW_KEY_D))
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * camSpeed;
+    if (keyPressed(GLFW_KEY_SPACE))
+        cameraPos += camSpeed * cameraUp;
+    if (keyPressed(GLFW_KEY_LEFT_SHIFT))
+        cameraPos -= camSpeed * cameraUp;
 }
 
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
-{
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
     if (!cursorLock) return;
 
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
 
-    if (firstMouse)
-    {
+    if (firstMouse) {
         lastX = xpos;
         lastY = ypos;
         firstMouse = false;
@@ -109,8 +136,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     cameraFront = glm::normalize(front);
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     fov -= (float)yoffset;
     if (fov < 1.0f)
         fov = 1.0f;
@@ -118,8 +144,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
         fov = 45.0f;
 }
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
@@ -165,7 +190,7 @@ int main() {
     glfwSetScrollCallback(window, scroll_callback);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSwapInterval(1);
+    glfwSwapInterval(vsyncEnabled ? 1 : 0);
 
     glewInit();
 
@@ -219,6 +244,14 @@ int main() {
     // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
     glBindVertexArray(0); 
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
+
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
@@ -226,13 +259,19 @@ int main() {
 
         processInput(window, shader);
         
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        float w = clear_color.w;
+        glClearColor(clear_color.x, clear_color.y, clear_color.z, w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplGlfw_NewFrame();
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui::NewFrame();
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         
         shader.use();
+
         
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         
@@ -255,12 +294,45 @@ int main() {
         shader.setMat4("projection", projection);
         
         glBindVertexArray(VAO);
+
+        if (debugWindow) {
+        ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_NoTitleBar);
+
+        if (ImGui::BeginTabBar("TabBar", ImGuiTabBarFlags_None)) {
+            if (ImGui::BeginTabItem("General")) {
+                ImGui::Text("Sky Color:");
+                ImGui::ColorEdit3("", (float*)&clear_color);
+                ImGui::Text("Speed");
+                ImGui::SliderFloat("Speed", &cameraSpeed, 0, 100);
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Debugger")) {
+                if (ImGui::Checkbox("VSync", &vsyncEnabled)) {
+                    glfwSwapInterval(vsyncEnabled ? 1 : 0);
+                }
+                ImGui::Text(std::format("DeltaTime: {:.6f}", deltaTime).c_str());
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Stats")) {
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
+        ImGui::End();
+    }
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         
         glfwSwapBuffers(window);
         glfwPollEvents();
 
         float lastFrame = 0.0f;
     }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
