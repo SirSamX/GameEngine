@@ -9,8 +9,10 @@
 #include <iostream>
 #include <format>
 #include <unordered_map>
+#include <algorithm>
 #include "Shader.h"
 #include "stb_image.h"
+#include "Scheduler.h"
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -249,18 +251,34 @@ int main() {
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
+    
+    const int FPS_HISTORY = 60;
+    float fpsValues[FPS_HISTORY] = {0};
+    int fpsIndex = 0;
+    int frameCount = 0;
+    float lastFPSUpdate = 0.0f;
+    ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    Scheduler scheduler;
 
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    scheduler.addTask(0.2f, [&]() {
+        float fps = frameCount / (static_cast<float>(glfwGetTime()) - lastFPSUpdate);
+        fpsValues[fpsIndex] = fps;
+        fpsIndex = (fpsIndex + 1) % FPS_HISTORY;
+
+        lastFPSUpdate = static_cast<float>(glfwGetTime());
+        frameCount = 0;
+    });
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        frameCount++;
+        scheduler.update();
+
         processInput(window, shader);
-        
-        float w = clear_color.w;
-        glClearColor(clear_color.x, clear_color.y, clear_color.z, w);
+        glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         ImGui_ImplGlfw_NewFrame();
@@ -296,38 +314,44 @@ int main() {
         glBindVertexArray(VAO);
 
         if (debugWindow) {
-        ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_NoTitleBar);
+            ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_NoTitleBar);
 
-        if (ImGui::BeginTabBar("TabBar", ImGuiTabBarFlags_None)) {
-            if (ImGui::BeginTabItem("General")) {
-                ImGui::Text("Sky Color:");
-                ImGui::ColorEdit3("", (float*)&clear_color);
-                ImGui::Text("Speed");
-                ImGui::SliderFloat("Speed", &cameraSpeed, 0, 100);
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Debugger")) {
-                if (ImGui::Checkbox("VSync", &vsyncEnabled)) {
-                    glfwSwapInterval(vsyncEnabled ? 1 : 0);
+            if (ImGui::BeginTabBar("TabBar", ImGuiTabBarFlags_None)) {
+                if (ImGui::BeginTabItem("General")) {
+                    ImGui::Text("Sky Color:");
+                    ImGui::ColorEdit3("##skyColor", (float*)&clearColor);
+                    ImGui::Text("Speed");
+                    ImGui::SliderFloat("Speed", &cameraSpeed, 0, 100);
+                    ImGui::EndTabItem();
                 }
-                ImGui::Text(std::format("DeltaTime: {:.6f}", deltaTime).c_str());
-                ImGui::EndTabItem();
+                if (ImGui::BeginTabItem("Debugger")) {
+                    if (ImGui::Checkbox("VSync", &vsyncEnabled))
+                        glfwSwapInterval(vsyncEnabled ? 1 : 0);
+
+                    ImGui::Text(std::format("DeltaTime: {:.6f}", deltaTime).c_str());
+                    ImGui::Text(std::format("FPS: {:.1f}", fpsValues[fpsIndex]).c_str());
+                    float sum = 0.0f;
+                    for (float v : fpsValues) sum += v;
+                    char overlay[32];
+                    sprintf(overlay, "avg %.1f", sum / FPS_HISTORY);
+
+                    auto [minIt, maxIt] = std::minmax_element(fpsValues, fpsValues + FPS_HISTORY);
+                    ImGui::PlotLines("##fpsPlot", fpsValues, FPS_HISTORY, fpsIndex, overlay, *minIt * 0.95f, *maxIt * 1.05f, ImVec2(0, 80.0f));
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Stats")) {
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
             }
-            if (ImGui::BeginTabItem("Stats")) {
-                ImGui::EndTabItem();
-            }
-            ImGui::EndTabBar();
+            ImGui::End();
         }
-        ImGui::End();
-    }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         
         glfwSwapBuffers(window);
         glfwPollEvents();
-
-        float lastFrame = 0.0f;
     }
 
     ImGui_ImplOpenGL3_Shutdown();
