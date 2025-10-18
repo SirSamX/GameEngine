@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug OpenGLDemo (LLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/OpenGLDemo",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build OpenGLDemo",
+      "stopOnEntry": false
+    }
+  ]
+}
