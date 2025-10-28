@@ -13,12 +13,13 @@
 #include "Shader.h"
 #include "stb_image.h"
 #include "Scheduler.h"
+#include "World.h"
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 bool wireframe = false;
-glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
+glm::vec3 cameraPos   = glm::vec3(8.0f, 80.0f, 8.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
 
@@ -30,6 +31,7 @@ float lastX =  800.0f / 2.0;
 float lastY =  600.0 / 2.0;
 float fov   =  45.0f;
 float cameraSpeed = 15.0f;
+int renderDistance = 4;
 
 bool debugWindow = false;
 bool vsyncEnabled = true;
@@ -57,7 +59,7 @@ bool keyPressed(int key) {
     return keys[key].pressed;
 }
 
-void processInput(GLFWwindow *window, Shader& shader) {
+void processInput(GLFWwindow *window, Shader& shader, World& world) {
     updateKeys(window);
 
     // Exit
@@ -99,6 +101,22 @@ void processInput(GLFWwindow *window, Shader& shader) {
         cameraPos += camSpeed * cameraUp;
     if (keyPressed(GLFW_KEY_LEFT_SHIFT))
         cameraPos -= camSpeed * cameraUp;
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (action == GLFW_PRESS) {
+        World* world = static_cast<World*>(glfwGetWindowUserPointer(window));
+        auto raycastResult = world->raycast(cameraPos, cameraFront, 10.0f);
+        if (raycastResult) {
+            if (button == GLFW_MOUSE_BUTTON_LEFT) {
+                world->setBlock(raycastResult->blockPos, 0);
+            }
+            else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+                world->setBlock(raycastResult->blockPos + raycastResult->face, 1);
+            }
+        }
+    }
 }
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
@@ -187,9 +205,13 @@ int main() {
     if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
 
+    World world;
+    glfwSetWindowUserPointer(window, &world);
+
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSwapInterval(vsyncEnabled ? 1 : 0);
@@ -201,50 +223,60 @@ int main() {
     Shader shader("src/shader/vert.glsl", "src/shader/frag.glsl");
     unsigned int texture = loadTexture("assets/brick.jpg");
     shader.setInt("texture1", texture);
+    Shader selectionShader("src/shader/selection.vert", "src/shader/selection.frag");
 
     float vertices[] = {
-        // positions          // tex coords (repeat per face)
-        -0.5f,-0.5f,-0.5f, 0,0,  0.5f,-0.5f,-0.5f, 1,0,  0.5f,0.5f,-0.5f, 1,1,  -0.5f,0.5f,-0.5f,0,1,  // back
-        -0.5f,-0.5f, 0.5f, 0,0,  0.5f,-0.5f, 0.5f, 1,0,  0.5f,0.5f, 0.5f, 1,1,  -0.5f,0.5f, 0.5f,0,1,  // front
-        -0.5f,-0.5f,-0.5f,0,0, -0.5f,0.5f,-0.5f,1,0, -0.5f,0.5f,0.5f,1,1, -0.5f,-0.5f,0.5f,0,1,         // left
-        0.5f,-0.5f,-0.5f,0,0,  0.5f,0.5f,-0.5f,1,0,  0.5f,0.5f,0.5f,1,1,  0.5f,-0.5f,0.5f,0,1,         // right
-        -0.5f,-0.5f,-0.5f,0,0,  0.5f,-0.5f,-0.5f,1,0,  0.5f,-0.5f,0.5f,1,1,  -0.5f,-0.5f,0.5f,0,1,       // bottom
-        -0.5f,0.5f,-0.5f,0,0,   0.5f,0.5f,-0.5f,1,0,   0.5f,0.5f,0.5f,1,1,   -0.5f,0.5f,0.5f,0,1        // top
+        // positions         
+        -0.005f, -0.005f, -0.005f,
+         0.005f, -0.005f, -0.005f,
+         0.005f,  0.005f, -0.005f,
+         0.005f,  0.005f, -0.005f,
+        -0.005f,  0.005f, -0.005f,
+        -0.005f, -0.005f, -0.005f,
+
+        -0.005f, -0.005f,  0.005f,
+         0.005f, -0.005f,  0.005f,
+         0.005f,  0.005f,  0.005f,
+         0.005f,  0.005f,  0.005f,
+        -0.005f,  0.005f,  0.005f,
+        -0.005f, -0.005f,  0.005f,
+
+        -0.005f,  0.005f,  0.005f,
+        -0.005f,  0.005f, -0.005f,
+        -0.005f, -0.005f, -0.005f,
+        -0.005f, -0.005f, -0.005f,
+        -0.005f, -0.005f,  0.005f,
+        -0.005f,  0.005f,  0.005f,
+
+         0.005f,  0.005f,  0.005f,
+         0.005f,  0.005f, -0.005f,
+         0.005f, -0.005f, -0.005f,
+         0.005f, -0.005f, -0.005f,
+         0.005f, -0.005f,  0.005f,
+         0.005f,  0.005f,  0.005f,
+
+        -0.005f, -0.005f, -0.005f,
+         0.005f, -0.005f, -0.005f,
+         0.005f, -0.005f,  0.005f,
+         0.005f, -0.005f,  0.005f,
+        -0.005f, -0.005f,  0.005f,
+        -0.005f, -0.005f, -0.005f,
+
+        -0.005f,  0.005f, -0.005f,
+         0.005f,  0.005f, -0.005f,
+         0.005f,  0.005f,  0.005f,
+         0.005f,  0.005f,  0.005f,
+        -0.005f,  0.005f,  0.005f,
+        -0.005f,  0.005f, -0.005f,
     };
-
-    unsigned int indices[36];
-    for(int i=0;i<6;i++){
-        indices[i*6+0]=i*4+0; indices[i*6+1]=i*4+1; indices[i*6+2]=i*4+2;
-        indices[i*6+3]=i*4+2; indices[i*6+4]=i*4+3; indices[i*6+5]=i*4+0;
-    }
-
-    unsigned int VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    unsigned int selectionVAO, selectionVBO;
+    glGenVertexArrays(1, &selectionVAO);
+    glGenBuffers(1, &selectionVBO);
+    glBindVertexArray(selectionVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, selectionVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-
-    // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-    glBindVertexArray(0); 
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -277,9 +309,13 @@ int main() {
         frameCount++;
         scheduler.update();
 
-        processInput(window, shader);
+        processInput(window, shader, world);
+        world.update(cameraPos, renderDistance);
+
         glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        shader.use();
 
         ImGui_ImplGlfw_NewFrame();
         ImGui_ImplOpenGL3_NewFrame();
@@ -288,31 +324,28 @@ int main() {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         
-        shader.use();
-
-        
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-        
-        glm::mat4 projection;
-        projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-        
-        for (int x = 0; x < 10; x++) {
-            for (int z = 0; z < 10; z++) {
-                glm::mat4 model = glm::mat4(1.0f);
-                model = glm::translate(model, glm::vec3(x, -5.0f, z));
-                //float angle = 0.0f * i;
-                //model = glm::rotate(model, glm::radians(angle), glm::vec3(0.7f, 0.5f, 0.3f));
-                shader.setMat4("model", model);
-                
-                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-            }
-        }
-        
+        glm::mat4 projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 1000.0f);
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
-        
-        glBindVertexArray(VAO);
 
+        world.render(shader);
+
+        auto raycastResult = world.raycast(cameraPos, cameraFront, 10.0f);
+        if (raycastResult) {
+            selectionShader.use();
+            selectionShader.setMat4("view", view);
+            selectionShader.setMat4("projection", projection);
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(raycastResult->blockPos) + glm::vec3(0.5f));
+            model = glm::scale(model, glm::vec3(1.01f));
+            selectionShader.setMat4("model", model);
+
+            glBindVertexArray(selectionVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
+        
         if (debugWindow) {
             ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_NoTitleBar);
 
@@ -337,6 +370,12 @@ int main() {
 
                     auto [minIt, maxIt] = std::minmax_element(fpsValues, fpsValues + FPS_HISTORY);
                     ImGui::PlotLines("##fpsPlot", fpsValues, FPS_HISTORY, fpsIndex, overlay, *minIt * 0.95f, *maxIt * 1.05f, ImVec2(0, 80.0f));
+
+                    ImGui::SliderInt("Render Distance", &renderDistance, 1, 100);
+
+                    //ImGui::Text("Indices: %d", allIndices.size());
+                    //ImGui::Text("Vertices: %d", allVertices.size());
+
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Stats")) {
@@ -357,10 +396,6 @@ int main() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
     
     glfwTerminate();
     return 0;

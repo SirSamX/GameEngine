@@ -8,9 +8,20 @@ find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 
-file(GLOB_RECURSE SOURCES "src/*.cpp" "lib/*.cpp")
-
-add_executable(OpenGLDemo ${SOURCES})
+add_executable(OpenGLDemo
+    src/main.cpp
+    src/Shader.cpp
+    src/Chunk.cpp
+    src/World.cpp
+    lib/stb_image.cpp
+    lib/imgui/imgui.cpp
+    lib/imgui/imgui_demo.cpp
+    lib/imgui/imgui_draw.cpp
+    lib/imgui/imgui_impl_glfw.cpp
+    lib/imgui/imgui_impl_opengl3.cpp
+    lib/imgui/imgui_tables.cpp
+    lib/imgui/imgui_widgets.cpp
+)
 
 # Include-Pfade
 target_include_directories(OpenGLDemo PRIVATE
