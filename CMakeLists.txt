@@ -36,3 +36,9 @@ target_link_libraries(OpenGLDemo PRIVATE
     glfw
     GLEW::GLEW
 )
+
+enable_testing()
+
+add_executable(compilation_test tests/test_project_compiles.cpp)
+
+add_test(NAME CompilationTest COMMAND compilation_test)
