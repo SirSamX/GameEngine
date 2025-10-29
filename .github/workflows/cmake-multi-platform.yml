@@ -31,12 +31,12 @@ jobs:
         sudo apt update
         sudo apt install -y cmake pkg-config \
           libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev \
-          libglew-dev libglfw3-dev libglfw3
+          libglew-dev libglfw3-dev libglfw3 libglm-dev
 
     - name: Install OpenGL dependencies (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        choco install -y freeglut glew glfw cmake
+        choco install -y freeglut glew glfw cmake glm
 
     - name: Configure CMake
       run: >
