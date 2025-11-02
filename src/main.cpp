@@ -40,6 +40,7 @@ ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 struct KeyState {
     bool pressed = false;
     bool justPressed = false;
+    bool justReleased = false;
 };
 
 std::unordered_map<int, KeyState> keys;
@@ -48,12 +49,17 @@ void updateKeys(GLFWwindow* window) {
     for (auto& [key, state] : keys) {
         bool isPressedNow = glfwGetKey(window, key) == GLFW_PRESS;
         state.justPressed = isPressedNow && !state.pressed;
+        state.justReleased = !isPressedNow && state.pressed;
         state.pressed = isPressedNow;
     }
 }
 
 bool keyJustPressed(int key) {
     return keys[key].justPressed;
+}
+
+bool keyJustReleased(int key) {
+    return keys[key].justReleased;
 }
 
 bool keyPressed(int key) {
@@ -107,6 +113,11 @@ void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow&
         cameraPos += camSpeed * cameraUp;
     if (keyPressed(GLFW_KEY_LEFT_SHIFT))
         cameraPos -= camSpeed * cameraUp;
+
+    if (keyPressed(GLFW_KEY_C))
+        fov = 15.0f;
+    if (keyJustReleased(GLFW_KEY_C))
+        fov = 45.0f;
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
@@ -162,11 +173,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    fov -= (float)yoffset;
-    if (fov < 1.0f)
-        fov = 1.0f;
-    if (fov > 45.0f)
-        fov = 45.0f;
+
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -203,10 +210,10 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
 
-    Shader shader("src/shader/vert.glsl", "src/shader/frag.glsl");
-    Texture texture("assets/atlas.png");
+    Shader shader("src/shader/default.vert", "src/shader/default.frag");
     shader.setInt("texture1", 0);
     Shader selectionShader("src/shader/selection.vert", "src/shader/selection.frag");
+    Texture texture("assets/atlas.png");
 
     float vertices[] = {
         -0.5f, -0.5f, -0.5f,
@@ -287,6 +294,12 @@ int main() {
         glm::mat4 projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 1000.0f);
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
+        shader.setVec3("viewPos", cameraPos);
+
+        float radius = 300.0f;
+        float time = glfwGetTime() / 5;
+        glm::vec3 sunPos(radius * cos(time), 100.0f, radius * sin(time));
+        shader.setVec3("lightPos", 0, 200, 0);
 
         world.render(shader);
 

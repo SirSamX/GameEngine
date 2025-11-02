@@ -63,32 +63,62 @@ void Chunk::generateMeshData(const World& world) {
 
                 if (getBlock_internal(x, y + 1, z, *this, world) == 0) { // Top
                     indices.insert(indices.end(), {indexOffset, indexOffset + 1, indexOffset + 2, indexOffset + 2, indexOffset + 3, indexOffset});
-                    vertices.insert(vertices.end(), { (float)x, (float)y + 1, (float)z, tex_coords[0].x, tex_coords[0].y, (float)x + 1, (float)y + 1, (float)z, tex_coords[1].x, tex_coords[1].y, (float)x + 1, (float)y + 1, (float)z + 1, tex_coords[2].x, tex_coords[2].y, (float)x, (float)y + 1, (float)z + 1, tex_coords[3].x, tex_coords[3].y});
+                    vertices.insert(vertices.end(), {
+                        (float)x,     (float)y + 1, (float)z,     tex_coords[0].x, tex_coords[0].y, 0.0f, 1.0f, 0.0f,
+                        (float)x + 1, (float)y + 1, (float)z,     tex_coords[1].x, tex_coords[1].y, 0.0f, 1.0f, 0.0f,
+                        (float)x + 1, (float)y + 1, (float)z + 1, tex_coords[2].x, tex_coords[2].y, 0.0f, 1.0f, 0.0f,
+                        (float)x,     (float)y + 1, (float)z + 1, tex_coords[3].x, tex_coords[3].y, 0.0f, 1.0f, 0.0f
+                    });
                     indexOffset += 4;
                 }
                 if (getBlock_internal(x, y - 1, z, *this, world) == 0) { // Bottom
                     indices.insert(indices.end(), {indexOffset, indexOffset + 1, indexOffset + 2, indexOffset + 2, indexOffset + 3, indexOffset});
-                    vertices.insert(vertices.end(), { (float)x, (float)y, (float)z, tex_coords[0].x, tex_coords[0].y, (float)x + 1, (float)y, (float)z, tex_coords[1].x, tex_coords[1].y, (float)x + 1, (float)y, (float)z + 1, tex_coords[2].x, tex_coords[2].y, (float)x, (float)y, (float)z + 1, tex_coords[3].x, tex_coords[3].y});
+                    vertices.insert(vertices.end(), {
+                        (float)x,     (float)y, (float)z,     tex_coords[0].x, tex_coords[0].y, 0.0f, -1.0f, 0.0f,
+                        (float)x + 1, (float)y, (float)z,     tex_coords[1].x, tex_coords[1].y, 0.0f, -1.0f, 0.0f,
+                        (float)x + 1, (float)y, (float)z + 1, tex_coords[2].x, tex_coords[2].y, 0.0f, -1.0f, 0.0f,
+                        (float)x,     (float)y, (float)z + 1, tex_coords[3].x, tex_coords[3].y, 0.0f, -1.0f, 0.0f
+                    });
                     indexOffset += 4;
                 }
                 if (getBlock_internal(x + 1, y, z, *this, world) == 0) { // Right
                     indices.insert(indices.end(), {indexOffset, indexOffset + 1, indexOffset + 2, indexOffset + 2, indexOffset + 3, indexOffset});
-                    vertices.insert(vertices.end(), { (float)x + 1, (float)y, (float)z, tex_coords[0].x, tex_coords[0].y, (float)x + 1, (float)y + 1, (float)z, tex_coords[1].x, tex_coords[1].y, (float)x + 1, (float)y + 1, (float)z + 1, tex_coords[2].x, tex_coords[2].y, (float)x + 1, (float)y, (float)z + 1, tex_coords[3].x, tex_coords[3].y});
+                    vertices.insert(vertices.end(), {
+                        (float)x + 1, (float)y,     (float)z,     tex_coords[0].x, tex_coords[0].y, 1.0f, 0.0f, 0.0f,
+                        (float)x + 1, (float)y + 1, (float)z,     tex_coords[1].x, tex_coords[1].y, 1.0f, 0.0f, 0.0f,
+                        (float)x + 1, (float)y + 1, (float)z + 1, tex_coords[2].x, tex_coords[2].y, 1.0f, 0.0f, 0.0f,
+                        (float)x + 1, (float)y,     (float)z + 1, tex_coords[3].x, tex_coords[3].y, 1.0f, 0.0f, 0.0f
+                    });
                     indexOffset += 4;
                 }
                 if (getBlock_internal(x - 1, y, z, *this, world) == 0) { // Left
                     indices.insert(indices.end(), {indexOffset, indexOffset + 1, indexOffset + 2, indexOffset + 2, indexOffset + 3, indexOffset});
-                    vertices.insert(vertices.end(), { (float)x, (float)y, (float)z, tex_coords[0].x, tex_coords[0].y, (float)x, (float)y + 1, (float)z, tex_coords[1].x, tex_coords[1].y, (float)x, (float)y + 1, (float)z + 1, tex_coords[2].x, tex_coords[2].y, (float)x, (float)y, (float)z + 1, tex_coords[3].x, tex_coords[3].y});
+                    vertices.insert(vertices.end(), {
+                        (float)x, (float)y,     (float)z,     tex_coords[0].x, tex_coords[0].y, -1.0f, 0.0f, 0.0f,
+                        (float)x, (float)y + 1, (float)z,     tex_coords[1].x, tex_coords[1].y, -1.0f, 0.0f, 0.0f,
+                        (float)x, (float)y + 1, (float)z + 1, tex_coords[2].x, tex_coords[2].y, -1.0f, 0.0f, 0.0f,
+                        (float)x, (float)y,     (float)z + 1, tex_coords[3].x, tex_coords[3].y, -1.0f, 0.0f, 0.0f
+                    });
                     indexOffset += 4;
                 }
                 if (getBlock_internal(x, y, z + 1, *this, world) == 0) { // Front
                     indices.insert(indices.end(), {indexOffset, indexOffset + 1, indexOffset + 2, indexOffset + 2, indexOffset + 3, indexOffset});
-                    vertices.insert(vertices.end(), { (float)x, (float)y, (float)z + 1, tex_coords[0].x, tex_coords[0].y, (float)x + 1, (float)y, (float)z + 1, tex_coords[1].x, tex_coords[1].y, (float)x + 1, (float)y + 1, (float)z + 1, tex_coords[2].x, tex_coords[2].y, (float)x, (float)y + 1, (float)z + 1, tex_coords[3].x, tex_coords[3].y});
+                    vertices.insert(vertices.end(), {
+                        (float)x,     (float)y,     (float)z + 1, tex_coords[0].x, tex_coords[0].y, 0.0f, 0.0f, 1.0f,
+                        (float)x + 1, (float)y,     (float)z + 1, tex_coords[1].x, tex_coords[1].y, 0.0f, 0.0f, 1.0f,
+                        (float)x + 1, (float)y + 1, (float)z + 1, tex_coords[2].x, tex_coords[2].y, 0.0f, 0.0f, 1.0f,
+                        (float)x,     (float)y + 1, (float)z + 1, tex_coords[3].x, tex_coords[3].y, 0.0f, 0.0f, 1.0f
+                    });
                     indexOffset += 4;
                 }
                 if (getBlock_internal(x, y, z - 1, *this, world) == 0) { // Back
                     indices.insert(indices.end(), {indexOffset, indexOffset + 1, indexOffset + 2, indexOffset + 2, indexOffset + 3, indexOffset});
-                    vertices.insert(vertices.end(), { (float)x, (float)y, (float)z, tex_coords[0].x, tex_coords[0].y, (float)x + 1, (float)y, (float)z, tex_coords[1].x, tex_coords[1].y, (float)x + 1, (float)y + 1, (float)z, tex_coords[2].x, tex_coords[2].y, (float)x, (float)y + 1, (float)z, tex_coords[3].x, tex_coords[3].y});
+                    vertices.insert(vertices.end(), {
+                        (float)x,     (float)y,     (float)z, tex_coords[0].x, tex_coords[0].y, 0.0f, 0.0f, -1.0f,
+                        (float)x + 1, (float)y,     (float)z, tex_coords[1].x, tex_coords[1].y, 0.0f, 0.0f, -1.0f,
+                        (float)x + 1, (float)y + 1, (float)z, tex_coords[2].x, tex_coords[2].y, 0.0f, 0.0f, -1.0f,
+                        (float)x,     (float)y + 1, (float)z, tex_coords[3].x, tex_coords[3].y, 0.0f, 0.0f, -1.0f
+                    });
                     indexOffset += 4;
                 }
             }
@@ -115,10 +145,12 @@ void Chunk::uploadMesh() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5*sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8*sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5*sizeof(float), (void*)(3*sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8*sizeof(float), (void*)(3*sizeof(float)));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8*sizeof(float), (void*)(5*sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     glBindVertexArray(0);
     meshDirty = false;
