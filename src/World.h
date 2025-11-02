@@ -1,11 +1,15 @@
 #pragma once
-#include "Chunk.h"
-#include "Shader.h"
 #include <unordered_map>
 #include <glm/vec3.hpp>
 #include <optional>
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <condition_variable>
+#include "Chunk.h"
+#include "Shader.h"
+#include "RaycastResult.h"
 
-// Simple hash function for glm::ivec3
 namespace std {
     template <>
     struct hash<glm::ivec3> {
@@ -15,22 +19,26 @@ namespace std {
     };
 }
 
-struct RaycastResult {
-    glm::ivec3 blockPos;
-    glm::ivec3 face;
-};
-
 class World {
+    mutable std::recursive_mutex chunksMutex;
+    std::thread worker;
+    std::queue<std::pair<int,int>> loadQueue;
+    std::mutex queueMutex;
+    std::condition_variable cv;
+    std::atomic<bool> running{true};
 public:
+    std::unordered_map<glm::ivec3, Chunk> chunks;
     World();
+    ~World();
     void render(Shader& shader);
     void update(const glm::vec3& cameraPos, int distance);
 
-    std::optional<RaycastResult> raycast(const glm::vec3& start, const glm::vec3& direction, float maxDist);
     uint8_t getBlock(const glm::ivec3& pos) const;
     void setBlock(const glm::ivec3& pos, uint8_t block);
+    void markChunkDirty(int x, int z);
+    void loadChunk(int x, int z);
+    void loadChunkAsync(int x, int z);
 
 private:
-    std::unordered_map<glm::ivec3, Chunk> chunks;
-    void loadChunk(int x, int z);
+    void worldGenThread();
 };

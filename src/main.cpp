@@ -3,23 +3,24 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
 #include <iostream>
 #include <format>
 #include <unordered_map>
 #include <algorithm>
+
 #include "Shader.h"
-#include "stb_image.h"
+#include "Texture.h"
 #include "Scheduler.h"
 #include "World.h"
+#include "Block.h"
+#include "DebugWindow.h"
+#include "Ray.h"
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 bool wireframe = false;
-glm::vec3 cameraPos   = glm::vec3(8.0f, 80.0f, 8.0f);
+glm::vec3 cameraPos   = glm::vec3(16.5f, 130.0f, 0.5f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
 
@@ -33,8 +34,8 @@ float fov   =  45.0f;
 float cameraSpeed = 15.0f;
 int renderDistance = 4;
 
-bool debugWindow = false;
 bool vsyncEnabled = true;
+ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 struct KeyState {
     bool pressed = false;
@@ -59,7 +60,7 @@ bool keyPressed(int key) {
     return keys[key].pressed;
 }
 
-void processInput(GLFWwindow *window, Shader& shader, World& world) {
+void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow& debugWindow) {
     updateKeys(window);
 
     // Exit
@@ -85,7 +86,12 @@ void processInput(GLFWwindow *window, Shader& shader, World& world) {
     if (keyJustPressed(GLFW_KEY_F2))
         shader.reload();
     if (keyJustPressed(GLFW_KEY_F3))
-        debugWindow = !debugWindow;
+        debugWindow.enabled = !debugWindow.enabled;
+    if (keyJustPressed(GLFW_KEY_R)) {
+        int chunkX = static_cast<int>(cameraPos.x) / Chunk::WIDTH;
+        int chunkZ = static_cast<int>(cameraPos.z) / Chunk::DEPTH;
+        world.markChunkDirty(chunkX, chunkZ);
+    }
 
     // Camera movement
     float camSpeed = cameraSpeed * deltaTime;
@@ -103,17 +109,17 @@ void processInput(GLFWwindow *window, Shader& shader, World& world) {
         cameraPos -= camSpeed * cameraUp;
 }
 
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (action == GLFW_PRESS) {
         World* world = static_cast<World*>(glfwGetWindowUserPointer(window));
-        auto raycastResult = world->raycast(cameraPos, cameraFront, 10.0f);
+        Ray ray(cameraPos, cameraFront);
+        auto raycastResult = ray.cast(*world, 10.0f);
         if (raycastResult) {
             if (button == GLFW_MOUSE_BUTTON_LEFT) {
                 world->setBlock(raycastResult->blockPos, 0);
             }
             else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-                world->setBlock(raycastResult->blockPos + raycastResult->face, 1);
+                world->setBlock(raycastResult->blockPos + raycastResult->face, (uint8_t)Block::Grass);
             }
         }
     }
@@ -132,18 +138,17 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
     }
 
     float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    float yoffset = lastY - ypos;
     lastX = xpos;
     lastY = ypos;
 
-    float sensitivity = 0.1f; // change this value to your liking
+    float sensitivity = 0.1f;
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
     yaw += xoffset;
     pitch += yoffset;
 
-    // make sure that when pitch is out of bounds, screen doesn't get flipped
     if (pitch > 89.0f)
         pitch = 89.0f;
     if (pitch < -89.0f)
@@ -166,28 +171,6 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
-}
-
-unsigned int loadTexture(const char* path) {
-    unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    int width, height, nrChannels;
-    unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
-    if (data) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    } else {
-        std::cout << "Failed to load texture: " << path << std::endl;
-    }
-    stbi_image_free(data);
-    return texture;
 }
 
 int main() {
@@ -221,53 +204,52 @@ int main() {
     glEnable(GL_DEPTH_TEST);
 
     Shader shader("src/shader/vert.glsl", "src/shader/frag.glsl");
-    unsigned int texture = loadTexture("assets/brick.jpg");
-    shader.setInt("texture1", texture);
+    Texture texture("assets/atlas.png");
+    shader.setInt("texture1", 0);
     Shader selectionShader("src/shader/selection.vert", "src/shader/selection.frag");
 
     float vertices[] = {
-        // positions         
-        -0.005f, -0.005f, -0.005f,
-         0.005f, -0.005f, -0.005f,
-         0.005f,  0.005f, -0.005f,
-         0.005f,  0.005f, -0.005f,
-        -0.005f,  0.005f, -0.005f,
-        -0.005f, -0.005f, -0.005f,
+        -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
 
-        -0.005f, -0.005f,  0.005f,
-         0.005f, -0.005f,  0.005f,
-         0.005f,  0.005f,  0.005f,
-         0.005f,  0.005f,  0.005f,
-        -0.005f,  0.005f,  0.005f,
-        -0.005f, -0.005f,  0.005f,
+        -0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
 
-        -0.005f,  0.005f,  0.005f,
-        -0.005f,  0.005f, -0.005f,
-        -0.005f, -0.005f, -0.005f,
-        -0.005f, -0.005f, -0.005f,
-        -0.005f, -0.005f,  0.005f,
-        -0.005f,  0.005f,  0.005f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
 
-         0.005f,  0.005f,  0.005f,
-         0.005f,  0.005f, -0.005f,
-         0.005f, -0.005f, -0.005f,
-         0.005f, -0.005f, -0.005f,
-         0.005f, -0.005f,  0.005f,
-         0.005f,  0.005f,  0.005f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
 
-        -0.005f, -0.005f, -0.005f,
-         0.005f, -0.005f, -0.005f,
-         0.005f, -0.005f,  0.005f,
-         0.005f, -0.005f,  0.005f,
-        -0.005f, -0.005f,  0.005f,
-        -0.005f, -0.005f, -0.005f,
+        -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f, -0.5f,
 
-        -0.005f,  0.005f, -0.005f,
-         0.005f,  0.005f, -0.005f,
-         0.005f,  0.005f,  0.005f,
-         0.005f,  0.005f,  0.005f,
-        -0.005f,  0.005f,  0.005f,
-        -0.005f,  0.005f, -0.005f,
+        -0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
     };
     unsigned int selectionVAO, selectionVBO;
     glGenVertexArrays(1, &selectionVAO);
@@ -278,52 +260,29 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 330");
+    DebugWindow debugWindow;
+    debugWindow.init(window);
     
-    const int FPS_HISTORY = 60;
-    float fpsValues[FPS_HISTORY] = {0};
-    int fpsIndex = 0;
-    int frameCount = 0;
-    float lastFPSUpdate = 0.0f;
-    ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     Scheduler scheduler;
-
-    scheduler.addTask(0.2f, [&]() {
-        float fps = frameCount / (static_cast<float>(glfwGetTime()) - lastFPSUpdate);
-        fpsValues[fpsIndex] = fps;
-        fpsIndex = (fpsIndex + 1) % FPS_HISTORY;
-
-        lastFPSUpdate = static_cast<float>(glfwGetTime());
-        frameCount = 0;
-    });
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        frameCount++;
+        debugWindow.updateFps(deltaTime);
         scheduler.update();
 
-        processInput(window, shader, world);
+        processInput(window, shader, world, debugWindow);
         world.update(cameraPos, renderDistance);
 
         glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.use();
-
-        ImGui_ImplGlfw_NewFrame();
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui::NewFrame();
         
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        
+        texture.bind();
+                
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 1000.0f);
         shader.setMat4("view", view);
@@ -331,7 +290,8 @@ int main() {
 
         world.render(shader);
 
-        auto raycastResult = world.raycast(cameraPos, cameraFront, 10.0f);
+        Ray ray(cameraPos, cameraFront);
+        auto raycastResult = ray.cast(world, 10.0f);
         if (raycastResult) {
             selectionShader.use();
             selectionShader.setMat4("view", view);
@@ -346,56 +306,15 @@ int main() {
         }
 
         
-        if (debugWindow) {
-            ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_NoTitleBar);
-
-            if (ImGui::BeginTabBar("TabBar", ImGuiTabBarFlags_None)) {
-                if (ImGui::BeginTabItem("General")) {
-                    ImGui::Text("Sky Color:");
-                    ImGui::ColorEdit3("##skyColor", (float*)&clearColor);
-                    ImGui::Text("Speed");
-                    ImGui::SliderFloat("Speed", &cameraSpeed, 0, 100);
-                    ImGui::EndTabItem();
-                }
-                if (ImGui::BeginTabItem("Debugger")) {
-                    if (ImGui::Checkbox("VSync", &vsyncEnabled))
-                        glfwSwapInterval(vsyncEnabled ? 1 : 0);
-
-                    ImGui::Text(std::format("DeltaTime: {:.6f}", deltaTime).c_str());
-                    ImGui::Text(std::format("FPS: {:.1f}", fpsValues[fpsIndex]).c_str());
-                    float sum = 0.0f;
-                    for (float v : fpsValues) sum += v;
-                    char overlay[32];
-                    sprintf(overlay, "avg %.1f", sum / FPS_HISTORY);
-
-                    auto [minIt, maxIt] = std::minmax_element(fpsValues, fpsValues + FPS_HISTORY);
-                    ImGui::PlotLines("##fpsPlot", fpsValues, FPS_HISTORY, fpsIndex, overlay, *minIt * 0.95f, *maxIt * 1.05f, ImVec2(0, 80.0f));
-
-                    ImGui::SliderInt("Render Distance", &renderDistance, 1, 100);
-
-                    //ImGui::Text("Indices: %d", allIndices.size());
-                    //ImGui::Text("Vertices: %d", allVertices.size());
-
-                    ImGui::EndTabItem();
-                }
-                if (ImGui::BeginTabItem("Stats")) {
-                    ImGui::EndTabItem();
-                }
-                ImGui::EndTabBar();
-            }
-            ImGui::End();
-        }
-
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        debugWindow.newFrame();
+        debugWindow.render(deltaTime, cameraSpeed, renderDistance, vsyncEnabled, clearColor, cameraPos, cameraFront);
+        debugWindow.renderImGui();
         
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    debugWindow.shutdown();
     
     glfwTerminate();
     return 0;

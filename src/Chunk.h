@@ -1,5 +1,4 @@
 #pragma once
-
 #include <vector>
 #include <glm/glm.hpp>
 #include <cstdint>
@@ -14,19 +13,22 @@ public:
 
     glm::ivec3 position;
     std::vector<uint8_t> blocks;
-    
-    unsigned int VAO, VBO, EBO;
+
+    unsigned int VAO = 0, VBO = 0, EBO = 0;
     bool meshDirty = true;
+    bool dataReady = false;
+
+    std::vector<float> vertices;
+    std::vector<unsigned int> indices;
 
     Chunk(glm::ivec3 pos);
 
     uint8_t getBlock(int x, int y, int z) const;
     void setBlock(int x, int y, int z, uint8_t block);
 
-    void buildMesh(const World& world);
-    void render();
+    void generateMeshData(const World& world);
 
-private:
-    std::vector<float> vertices;
-    std::vector<unsigned int> indices;
+    void uploadMesh();
+
+    void render();
 };
