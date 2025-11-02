@@ -210,9 +210,9 @@ int main() {
 
     glEnable(GL_DEPTH_TEST);
 
-    Shader shader("src/shader/default.vert", "src/shader/default.frag");
+    Shader shader("shader/default.vert", "shader/default.frag");
     shader.setInt("texture1", 0);
-    Shader selectionShader("src/shader/selection.vert", "src/shader/selection.frag");
+    Shader selectionShader("shader/selection.vert", "shader/selection.frag");
     Texture texture("assets/atlas.png");
 
     float vertices[] = {

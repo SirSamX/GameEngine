@@ -6,7 +6,7 @@
       "type": "lldb",
       "request": "launch",
       "program": "${workspaceFolder}/build/OpenGLDemo",
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/build",
       "preLaunchTask": "build OpenGLDemo",
       "stopOnEntry": false
     }
