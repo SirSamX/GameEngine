@@ -26,17 +26,18 @@ glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
 
 bool cursorLock = true;
 bool firstMouse = true;
-float yaw   = -90.0f;
-float pitch =  0.0f;
-float lastX =  800.0f / 2.0;
-float lastY =  600.0 / 2.0;
-float fov   =  45.0f;
+float yaw = -90.0f;
+float pitch = 0.0f;
+float lastX = 800.0f / 2.0;
+float lastY = 600.0 / 2.0;
+float fov = 45.0f;
+float fovTarget = 15.0f;
 float cameraSpeed = 15.0f;
-int renderDistance = 4;
+int renderDistance = 8;
 
 bool vsyncEnabled = true;
-glm::vec3 clearColor = glm::vec3(0.45f, 0.55f, 0.60f);
-glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+glm::vec3 clearColor(0.45f, 0.55f, 0.60f);
+glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
 struct KeyState {
     bool pressed = false;
@@ -113,8 +114,17 @@ void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow&
     if (keyPressed(GLFW_KEY_LEFT_SHIFT))
         cameraPos -= camSpeed * cameraUp;
 
-    if (keyPressed(GLFW_KEY_C))
-        fov = 15.0f;
+    static double startTime = 0;
+
+    if (keyJustPressed(GLFW_KEY_C))
+        startTime = glfwGetTime();
+
+    if (keyPressed(GLFW_KEY_C)) {
+        double t = (glfwGetTime() - startTime) / 0.5;
+        t = t > 1 ? 1 : t;        // clamp
+        t = t*t*(3-2*t);          // smoothstep
+        fov = 45 + t * (fovTarget - 45);
+    }
     if (keyJustReleased(GLFW_KEY_C))
         fov = 45.0f;
 }
@@ -172,7 +182,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-
+    fovTarget = std::clamp(fovTarget - yoffset * 1.0, 1.0, 40.0);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
