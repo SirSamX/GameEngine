@@ -6,11 +6,11 @@ in vec3 FragPos;
 in vec3 Normal;
 
 uniform sampler2D texture1;
+uniform vec3 lightColor;
 uniform vec3 lightPos;
 uniform vec3 viewPos;
 
 void main() {
-    vec3 lightColor = vec3(1, 1, 1);
     float ambientStrength = 0.1;
     float specularStrength = 0.5;
 

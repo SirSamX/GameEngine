@@ -38,7 +38,7 @@ void DebugWindow::updateFps(float newDeltaTime) {
     }
 }
 
-void DebugWindow::render(float deltaTime, float& cameraSpeed, int& renderDistance, bool& vsyncEnabled, ImVec4& clearColor, glm::vec3& cameraPos, glm::vec3& cameraFront) {
+void DebugWindow::render(float deltaTime, float& cameraSpeed, int& renderDistance, bool& vsyncEnabled, glm::vec3& clearColor, glm::vec3& cameraPos, glm::vec3& cameraFront, glm::vec3& lightColor) {
     if (!enabled) return;
 
     ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_NoTitleBar);
@@ -47,6 +47,8 @@ void DebugWindow::render(float deltaTime, float& cameraSpeed, int& renderDistanc
         if (ImGui::BeginTabItem("General")) {
             ImGui::Text("Sky Color:");
             ImGui::ColorEdit3("##skyColor", (float*)&clearColor);
+            ImGui::Text("Light Color:");
+            ImGui::ColorEdit3("##lightColor", (float*)&lightColor);
             ImGui::Text("Speed");
             ImGui::SliderFloat("Speed", &cameraSpeed, 0, 100);
             ImGui::Text(std::format("Camera Pos: X:{:.1f} Y:{:.1f} Z:{:.1f}", cameraPos.x, cameraPos.y, cameraPos.z).c_str());

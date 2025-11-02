@@ -10,7 +10,7 @@ public:
     void init(GLFWwindow* window);
     void shutdown();
     void newFrame();
-    void render(float deltaTime, float& cameraSpeed, int& renderDistance, bool& vsyncEnabled, ImVec4& clearColor, glm::vec3& cameraPos, glm::vec3& cameraFront);
+    void render(float deltaTime, float& cameraSpeed, int& renderDistance, bool& vsyncEnabled, glm::vec3& clearColor, glm::vec3& cameraPos, glm::vec3& cameraFront, glm::vec3& lightColor);
     void renderImGui();
     void updateFps(float newDeltaTime);
 

@@ -35,7 +35,8 @@ float cameraSpeed = 15.0f;
 int renderDistance = 4;
 
 bool vsyncEnabled = true;
-ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+glm::vec3 clearColor = glm::vec3(0.45f, 0.55f, 0.60f);
+glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
 
 struct KeyState {
     bool pressed = false;
@@ -283,7 +284,7 @@ int main() {
         processInput(window, shader, world, debugWindow);
         world.update(cameraPos, renderDistance);
 
-        glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+        glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shader.use();
@@ -295,6 +296,7 @@ int main() {
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
         shader.setVec3("viewPos", cameraPos);
+        shader.setVec3("lightColor", lightColor);
 
         float radius = 300.0f;
         float time = glfwGetTime() / 5;
@@ -320,7 +322,7 @@ int main() {
 
         
         debugWindow.newFrame();
-        debugWindow.render(deltaTime, cameraSpeed, renderDistance, vsyncEnabled, clearColor, cameraPos, cameraFront);
+        debugWindow.render(deltaTime, cameraSpeed, renderDistance, vsyncEnabled, clearColor, cameraPos, cameraFront, lightColor);
         debugWindow.renderImGui();
         
         glfwSwapBuffers(window);
