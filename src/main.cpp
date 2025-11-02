@@ -95,9 +95,7 @@ void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow&
     if (keyJustPressed(GLFW_KEY_F3))
         debugWindow.enabled = !debugWindow.enabled;
     if (keyJustPressed(GLFW_KEY_R)) {
-        int chunkX = static_cast<int>(cameraPos.x) / Chunk::WIDTH;
-        int chunkZ = static_cast<int>(cameraPos.z) / Chunk::DEPTH;
-        world.markChunkDirty(chunkX, chunkZ);
+        world.chunks.clear();
     }
 
     // Camera movement
