@@ -1,4 +1,3 @@
-
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -19,35 +18,32 @@ public:
         glm::vec3 step = glm::sign(direction);
         glm::vec3 tMax = (glm::vec3(currentBlock) + (step + 1.0f) / 2.0f - origin) / direction;
         glm::vec3 tDelta = step / direction;
+        glm::ivec3 face(0);
 
         for (int i = 0; i < maxDist; ++i) {
             if (world.getBlock(currentBlock) != 0) {
-                glm::vec3 face = glm::vec3(0.0f);
-                if (tMax.x < tMax.y) {
-                    if (tMax.x < tMax.z) face.x = -step.x;
-                    else face.z = -step.z;
-                } else {
-                    if (tMax.y < tMax.z) face.y = -step.y;
-                    else face.z = -step.z;
-                }
-                return RaycastResult{currentBlock, glm::ivec3(face)};
+                return RaycastResult{currentBlock, face};
             }
 
             if (tMax.x < tMax.y) {
                 if (tMax.x < tMax.z) {
                     currentBlock.x += step.x;
                     tMax.x += tDelta.x;
+                    face = glm::ivec3(-step.x, 0, 0);
                 } else {
                     currentBlock.z += step.z;
                     tMax.z += tDelta.z;
+                    face = glm::ivec3(0, 0, -step.z);
                 }
             } else {
                 if (tMax.y < tMax.z) {
                     currentBlock.y += step.y;
                     tMax.y += tDelta.y;
+                    face = glm::ivec3(0, -step.y, 0);
                 } else {
                     currentBlock.z += step.z;
                     tMax.z += tDelta.z;
+                    face = glm::ivec3(0, 0, -step.z);
                 }
             }
         }
