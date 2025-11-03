@@ -46,6 +46,7 @@ struct KeyState {
 };
 
 std::unordered_map<int, KeyState> keys;
+uint8_t hotbarSlot = 1;
 
 void updateKeys(GLFWwindow* window) {
     for (auto& [key, state] : keys) {
@@ -139,7 +140,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
                 world->setBlock(raycastResult->blockPos, 0);
             }
             else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-                world->setBlock(raycastResult->blockPos + raycastResult->face, (uint8_t)Block::Grass);
+                if (hotbarSlot < 1 || hotbarSlot > 2) return;
+                world->setBlock(raycastResult->blockPos + raycastResult->face, hotbarSlot);
             }
         }
     }
@@ -182,7 +184,11 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    fovTarget = std::clamp(fovTarget - yoffset * 1.0, 1.0, 40.0);
+    if (keyPressed(GLFW_KEY_C)) {
+        fovTarget = std::clamp(fovTarget - yoffset * 1.0, 1.0, 40.0);
+    } else {
+        hotbarSlot = (hotbarSlot + static_cast<int>(yoffset) - 1 + 9) % 9 + 1;
+    }
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -225,47 +231,21 @@ int main() {
     Texture texture("assets/atlas.png");
 
     float vertices[] = {
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,
-
-        -0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
+        // Front face
+        -0.5f, -0.5f,  0.5f,  0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,  0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f, -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f, -0.5f, -0.5f,  0.5f,
+        // Back face
+        -0.5f, -0.5f, -0.5f,  0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,  0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f, -0.5f,  0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f, -0.5f, -0.5f, -0.5f,
+        // Connecting lines
+        -0.5f, -0.5f,  0.5f, -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,  0.5f, -0.5f, -0.5f,
+        -0.5f,  0.5f,  0.5f, -0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f,  0.5f,  0.5f,  0.5f, -0.5f
     };
     unsigned int selectionVAO, selectionVBO;
     glGenVertexArrays(1, &selectionVAO);
@@ -325,12 +305,19 @@ int main() {
             selectionShader.setMat4("model", model);
 
             glBindVertexArray(selectionVAO);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glLineWidth(3.0f);
+            glDrawArrays(GL_LINES, 0, 24);
+            glLineWidth(1.0f);
         }
 
         
         debugWindow.newFrame();
         debugWindow.render(deltaTime, cameraSpeed, renderDistance, vsyncEnabled, clearColor, cameraPos, cameraFront, lightColor);
+        ImGui::GetBackgroundDrawList()->AddText(
+            ImVec2(20, 20),
+            IM_COL32(255, 255, 255, 255),
+            std::to_string(hotbarSlot).c_str()
+        );
         debugWindow.renderImGui();
         
         glfwSwapBuffers(window);

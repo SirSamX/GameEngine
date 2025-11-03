@@ -87,10 +87,10 @@ void World::worldGenThread() {
             loadQueue.pop();
         }
 
-        glm::ivec3 chunkPos(task.first, 0, task.second);
+        glm::ivec2 chunkPos(task.first, task.second);
         {
             std::lock_guard<std::recursive_mutex> lock(chunksMutex);
-            if (chunks.count(chunkPos)) continue;
+            if (chunks.count(glm::ivec3(chunkPos.x, 0, chunkPos.y))) continue;
         }
 
         auto start = std::chrono::high_resolution_clock::now();
@@ -103,7 +103,7 @@ void World::worldGenThread() {
 
         {
             std::lock_guard<std::recursive_mutex> lock(chunksMutex);
-            chunks.emplace(chunkPos, std::move(c));
+            chunks.emplace(glm::ivec3(chunkPos.x, 0, chunkPos.y), std::move(c));
 
             auto markDirty = [&](int x, int z) {
                 auto it = chunks.find(glm::ivec3(x, 0, z));
@@ -112,10 +112,10 @@ void World::worldGenThread() {
                 }
             };
 
-            markDirty(chunkPos.x + 1, chunkPos.z);
-            markDirty(chunkPos.x - 1, chunkPos.z);
-            markDirty(chunkPos.x, chunkPos.z + 1);
-            markDirty(chunkPos.x, chunkPos.z - 1);
+            markDirty(chunkPos.x + 1, chunkPos.y);
+            markDirty(chunkPos.x - 1, chunkPos.y);
+            markDirty(chunkPos.x, chunkPos.y + 1);
+            markDirty(chunkPos.x, chunkPos.y - 1);
         }
     }
 }

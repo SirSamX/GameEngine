@@ -8,7 +8,6 @@
 #include <condition_variable>
 #include "Chunk.h"
 #include "Shader.h"
-#include "RaycastResult.h"
 
 namespace std {
     template <>

@@ -11,7 +11,7 @@ public:
     static constexpr int HEIGHT = 128;
     static constexpr int DEPTH = 16;
 
-    glm::ivec3 position;
+    glm::ivec2 position;
     std::vector<uint8_t> blocks;
 
     unsigned int VAO = 0, VBO = 0, EBO = 0;
@@ -21,7 +21,7 @@ public:
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
 
-    Chunk(glm::ivec3 pos);
+    Chunk(glm::ivec2 pos);
 
     uint8_t getBlock(int x, int y, int z) const;
     void setBlock(int x, int y, int z, uint8_t block);

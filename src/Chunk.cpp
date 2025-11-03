@@ -11,10 +11,10 @@ std::map<Block, std::vector<glm::vec2>> block_textures = {
     {Block::Stone, {glm::vec2(0.0f, 0.0f), glm::vec2(1.0f, 0.0f), glm::vec2(1.0f, 0.5f), glm::vec2(0.0f, 0.5f)}}
 };
 
-Chunk::Chunk(glm::ivec3 pos) : position(pos), blocks(WIDTH * HEIGHT * DEPTH, 0), meshDirty(true) {
+Chunk::Chunk(glm::ivec2 pos) : position(pos), blocks(WIDTH * HEIGHT * DEPTH, 0), meshDirty(true) {
     for (int x = 0; x < WIDTH; ++x) {
         for (int z = 0; z < DEPTH; ++z) {
-            float height = Noise::generate(position.x * WIDTH + x, position.z * DEPTH + z) * HEIGHT;
+            float height = Noise::generate(position.x * WIDTH + x, position.y * DEPTH + z) * HEIGHT;
             for (int y = 0; y < height; ++y) {
                 blocks[x + z * WIDTH + y * WIDTH * DEPTH] = (y < height - 5) ? (uint8_t)Block::Stone : (uint8_t)Block::Grass;
             }
@@ -43,7 +43,7 @@ uint8_t getBlock_internal(int x, int y, int z, const Chunk& chunk, const World& 
     glm::ivec3 worldPos = {
         chunk.position.x * Chunk::WIDTH + x,
         y,
-        chunk.position.z * Chunk::DEPTH + z
+        chunk.position.y * Chunk::DEPTH + z
     };
     return world.getBlock(worldPos);
 }

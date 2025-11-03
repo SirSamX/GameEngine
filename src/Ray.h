@@ -1,10 +1,13 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "RaycastResult.h"
 #include <optional>
 
-class World;
+
+struct RaycastResult {
+    glm::ivec3 blockPos;
+    glm::ivec3 face;
+};
 
 class Ray {
 public:
