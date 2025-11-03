@@ -17,22 +17,16 @@ Texture::Texture(const char* path) {
     unsigned char* data = stbi_load(path, &width, &height, &nrChannels, 0);
     if (data) {
         std::cout << "Loaded texture: " << path << " with " << nrChannels << " channels, " << width << "x" << height << std::endl;
+        
         GLenum format = GL_RGB;
-        GLenum internalFormat = GL_RGB8;
-        if (nrChannels == 1) {
+        if (nrChannels == 1)
             format = GL_RED;
-            internalFormat = GL_R8;
-        }
-        else if (nrChannels == 3) {
+        else if (nrChannels == 3)
             format = GL_RGB;
-            internalFormat = GL_RGB8;
-        }
-        else if (nrChannels == 4) {
+        else if (nrChannels == 4)
             format = GL_RGBA;
-            internalFormat = GL_RGBA8;
-        }
 
-        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     } else {
         std::cout << "Failed to load texture: " << path << std::endl;

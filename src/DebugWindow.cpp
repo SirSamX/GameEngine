@@ -76,6 +76,12 @@ void DebugWindow::render(float deltaTime, float& cameraSpeed, int& renderDistanc
             ImGui::EndTabItem();
         }
 
+        if (ImGui::BeginTabItem("Models")) {
+            if (ImGui::Button("Backpack")) {
+            }
+            ImGui::EndTabItem();
+        }
+
         ImGui::EndTabBar();
     }
 

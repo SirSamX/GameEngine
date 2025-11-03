@@ -6,6 +6,7 @@
 #include <iostream>
 #include <format>
 #include <unordered_map>
+#include <filesystem>
 
 #include "Shader.h"
 #include "Texture.h"
@@ -16,6 +17,7 @@
 #include "Ray.h"
 #include "Camera.h"
 #include "Input.h"
+#include "Model.h"
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -141,6 +143,7 @@ int main() {
     shader.setInt("texture1", 0);
     Shader selectionShader("../src/shader/selection.vert", "../src/shader/selection.frag");
     Texture texture("../assets/atlas.png");
+    Model backpack("../assets/models/backpack/backpack.obj");
 
     float vertices[] = {
         // Front face
@@ -205,6 +208,11 @@ int main() {
         shader.setVec3("lightPos", 0, 200, 0);
 
         world.render(shader);
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(16.5f, 135.0f, 0.5f));
+        shader.setMat4("model", model);
+        backpack.draw(shader);
 
         Ray ray(camera.pos, camera.front);
         auto raycastResult = ray.cast(world, 10.0f);

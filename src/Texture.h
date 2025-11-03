@@ -1,9 +1,8 @@
 #pragma once
 
 class Texture {
-private:
-    unsigned int texture;
 public:
+    unsigned int texture;
     Texture(const char* path);
     void bind();
 };

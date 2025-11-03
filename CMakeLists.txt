@@ -7,6 +7,7 @@ set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(assimp REQUIRED)
 
 file(GLOB_RECURSE SRC_FILES
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
@@ -29,6 +30,7 @@ target_link_libraries(OpenGLDemo PRIVATE
     OpenGL::GL
     glfw
     GLEW::GLEW
+    assimp::assimp
 )
 
 add_custom_command(
