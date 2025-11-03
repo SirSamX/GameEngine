@@ -6,7 +6,6 @@
 #include <iostream>
 #include <format>
 #include <unordered_map>
-#include <algorithm>
 
 #include "Shader.h"
 #include "Texture.h"
@@ -15,67 +14,28 @@
 #include "Block.h"
 #include "DebugWindow.h"
 #include "Ray.h"
+#include "Camera.h"
+#include "Input.h"
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 bool wireframe = false;
-glm::vec3 cameraPos   = glm::vec3(16.5f, 130.0f, 0.5f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
-
-bool cursorLock = true;
-bool firstMouse = true;
-float yaw = -90.0f;
-float pitch = 0.0f;
-float lastX = 800.0f / 2.0;
-float lastY = 600.0 / 2.0;
-float fov = 45.0f;
-float fovTarget = 15.0f;
-float cameraSpeed = 15.0f;
+Camera camera;
 int renderDistance = 8;
-
+uint8_t hotbarSlot = 1;
+float fovTarget = 15.0;;
 bool vsyncEnabled = true;
 glm::vec3 clearColor(0.45f, 0.55f, 0.60f);
 glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
-struct KeyState {
-    bool pressed = false;
-    bool justPressed = false;
-    bool justReleased = false;
-};
-
-std::unordered_map<int, KeyState> keys;
-uint8_t hotbarSlot = 1;
-
-void updateKeys(GLFWwindow* window) {
-    for (auto& [key, state] : keys) {
-        bool isPressedNow = glfwGetKey(window, key) == GLFW_PRESS;
-        state.justPressed = isPressedNow && !state.pressed;
-        state.justReleased = !isPressedNow && state.pressed;
-        state.pressed = isPressedNow;
-    }
-}
-
-bool keyJustPressed(int key) {
-    return keys[key].justPressed;
-}
-
-bool keyJustReleased(int key) {
-    return keys[key].justReleased;
-}
-
-bool keyPressed(int key) {
-    return keys[key].pressed;
-}
-
 void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow& debugWindow) {
-    updateKeys(window);
+    Input::updateKeys(window);
 
     // Exit
-    if (keyJustPressed(GLFW_KEY_ESCAPE)) {
-        cursorLock = !cursorLock;
-        if (cursorLock) {
+    if (Input::keyJustPressed(GLFW_KEY_ESCAPE)) {
+        camera.cursorLock = !camera.cursorLock;
+        if (camera.cursorLock) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         } else {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -83,57 +43,41 @@ void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow&
     }
 
     // Debug Keys
-    if (keyJustPressed(GLFW_KEY_X))
+    if (Input::keyJustPressed(GLFW_KEY_X))
         glfwSetWindowShouldClose(window, true);
-    if (keyJustPressed(GLFW_KEY_F1)) {
+    if (Input::keyJustPressed(GLFW_KEY_F1)) {
         wireframe = !wireframe;
         if (wireframe)
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         else
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
-    if (keyJustPressed(GLFW_KEY_F2))
+    if (Input::keyJustPressed(GLFW_KEY_F2))
         shader.reload();
-    if (keyJustPressed(GLFW_KEY_F3))
+    if (Input::keyJustPressed(GLFW_KEY_F3))
         debugWindow.enabled = !debugWindow.enabled;
-    if (keyJustPressed(GLFW_KEY_R)) {
+    if (Input::keyJustPressed(GLFW_KEY_R))
         world.chunks.clear();
-    }
-
-    // Camera movement
-    float camSpeed = cameraSpeed * deltaTime;
-    if (keyPressed(GLFW_KEY_W))
-        cameraPos += camSpeed * cameraFront;
-    if (keyPressed(GLFW_KEY_S))
-        cameraPos -= camSpeed * cameraFront;
-    if (keyPressed(GLFW_KEY_A))
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * camSpeed;
-    if (keyPressed(GLFW_KEY_D))
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * camSpeed;
-    if (keyPressed(GLFW_KEY_SPACE))
-        cameraPos += camSpeed * cameraUp;
-    if (keyPressed(GLFW_KEY_LEFT_SHIFT))
-        cameraPos -= camSpeed * cameraUp;
 
     static double startTime = 0;
 
-    if (keyJustPressed(GLFW_KEY_C))
+    if (Input::keyJustPressed(GLFW_KEY_C))
         startTime = glfwGetTime();
 
-    if (keyPressed(GLFW_KEY_C)) {
+    if (Input::keyPressed(GLFW_KEY_C)) {
         double t = (glfwGetTime() - startTime) / 0.5;
         t = t > 1 ? 1 : t;        // clamp
         t = t*t*(3-2*t);          // smoothstep
-        fov = 45 + t * (fovTarget - 45);
+        camera.fov = 45 + t * (fovTarget - 45);
     }
-    if (keyJustReleased(GLFW_KEY_C))
-        fov = 45.0f;
+    if (Input::keyJustReleased(GLFW_KEY_C))
+        camera.fov = 45.0f;
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (action == GLFW_PRESS) {
         World* world = static_cast<World*>(glfwGetWindowUserPointer(window));
-        Ray ray(cameraPos, cameraFront);
+        Ray ray(camera.pos, camera.front);
         auto raycastResult = ray.cast(*world, 10.0f);
         if (raycastResult) {
             if (button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -148,43 +92,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 }
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
-    if (!cursorLock) return;
-
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-
-    if (firstMouse) {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    glm::vec3 front;
-    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    front.y = sin(glm::radians(pitch));
-    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraFront = glm::normalize(front);
+    camera.mouseLook(xposIn, yposIn);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    if (keyPressed(GLFW_KEY_C)) {
+    if (Input::keyPressed(GLFW_KEY_C)) {
         fovTarget = std::clamp(fovTarget - yoffset * 1.0, 1.0, 40.0);
     } else {
         hotbarSlot = (hotbarSlot + static_cast<int>(yoffset) - 1 + 9) % 9 + 1;
@@ -270,7 +182,8 @@ int main() {
         scheduler.update();
 
         processInput(window, shader, world, debugWindow);
-        world.update(cameraPos, renderDistance);
+        world.update(camera.pos, renderDistance);
+        camera.creativeMovement(deltaTime);
 
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -279,21 +192,21 @@ int main() {
         
         texture.bind();
                 
-        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-        glm::mat4 projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 1000.0f);
+        glm::mat4 view = glm::lookAt(camera.pos, camera.pos + camera.front, camera.up);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.fov), 800.0f / 600.0f, 0.1f, 1000.0f);
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
-        shader.setVec3("viewPos", cameraPos);
+        shader.setVec3("viewPos", camera.pos);
         shader.setVec3("lightColor", lightColor);
 
-        float radius = 300.0f;
+        /*float radius = 300.0f;
         float time = glfwGetTime() / 5;
-        glm::vec3 sunPos(radius * cos(time), 100.0f, radius * sin(time));
+        glm::vec3 sunPos(radius * cos(time), 100.0f, radius * sin(time));*/
         shader.setVec3("lightPos", 0, 200, 0);
 
         world.render(shader);
 
-        Ray ray(cameraPos, cameraFront);
+        Ray ray(camera.pos, camera.front);
         auto raycastResult = ray.cast(world, 10.0f);
         if (raycastResult) {
             selectionShader.use();
@@ -312,7 +225,7 @@ int main() {
 
         
         debugWindow.newFrame();
-        debugWindow.render(deltaTime, cameraSpeed, renderDistance, vsyncEnabled, clearColor, cameraPos, cameraFront, lightColor);
+        debugWindow.render(deltaTime, camera.speed, renderDistance, vsyncEnabled, clearColor, camera.pos, camera.front, lightColor);
         ImGui::GetBackgroundDrawList()->AddText(
             ImVec2(20, 20),
             IM_COL32(255, 255, 255, 255),
