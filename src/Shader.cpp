@@ -13,6 +13,7 @@ void Shader::reload()
 {
     glDeleteProgram(ID);
     compileShaders();
+    std::cout << "Shaders reloaded!" << std::endl;
 }
 
 void Shader::compileShaders()
