@@ -99,7 +99,7 @@ void World::worldGenThread() {
         auto end = std::chrono::high_resolution_clock::now();
 
         std::chrono::duration<double, std::milli> ms = end - start;
-        std::cout << "Chunk (" << task.first << ", " << task.second << ") generated in " << ms.count() << " ms\n";
+        //std::cout << "Chunk (" << task.first << ", " << task.second << ") generated in " << ms.count() << " ms\n";
 
         {
             std::lock_guard<std::recursive_mutex> lock(chunksMutex);

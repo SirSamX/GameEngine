@@ -6,8 +6,8 @@
 
 class Model {
 public:
-    Model(const char *path) {
-        loadModel(path);
+    Model(const char *path, unsigned int flags = 0) {
+        loadModel(path, flags);
     }
     void draw(Shader &shader);
 private:
@@ -15,7 +15,7 @@ private:
     std::vector<Mesh> meshes;
     std::string directory;
 
-    void loadModel(std::string path);
+    void loadModel(std::string path, unsigned int flags);
     void processNode(aiNode *node, const aiScene *scene);
     Mesh processMesh(aiMesh *mesh, const aiScene *scene);
     std::vector<MeshTexture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName);

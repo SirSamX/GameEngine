@@ -10,9 +10,9 @@ void Model::draw(Shader &shader)
         meshes[i].draw(shader);
 }  
 
-void Model::loadModel(std::string path) {
+void Model::loadModel(std::string path, unsigned int flags) {
     Assimp::Importer import;
-    const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+    const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | flags);
     
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
@@ -197,7 +197,7 @@ std::vector<MeshTexture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureT
         if (!skip) {
             MeshTexture texture;
             std::string fullPath = this->directory + '/' + str.C_Str();
-            texture.id = Texture(fullPath.c_str()).texture;
+            texture.id = Texture(fullPath.c_str()).id;
             texture.type = typeName;
             texture.path = str.C_Str();
             textures.push_back(texture);

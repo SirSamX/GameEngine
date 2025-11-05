@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <assimp/postprocess.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <format>
@@ -105,8 +106,13 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
     }
 }
 
+unsigned int SCR_WIDTH = 800;
+unsigned int SCR_HEIGHT = 600;
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
+    SCR_WIDTH = width;
+    SCR_HEIGHT = height;
 }
 
 int main() {
@@ -140,10 +146,13 @@ int main() {
     glEnable(GL_DEPTH_TEST);
 
     Shader shader("../src/shader/default.vert", "../src/shader/default.frag");
+    Shader modelShader("../src/shader/model.vert", "../src/shader/model.frag");
+    Texture texture("../assets/atlas.png");
     shader.setInt("texture1", 0);
     Shader selectionShader("../src/shader/selection.vert", "../src/shader/selection.frag");
-    Texture texture("../assets/atlas.png");
-    Model backpack("../assets/models/backpack/backpack.obj");
+    Model backpack("../assets/models/backpack/backpack.obj", aiProcess_FlipUVs);
+    Model monkey("../assets/models/monkey/monkey.obj");
+    Model helicopter("../assets/models/tiger/Tiger_I.obj", aiProcess_GenNormals);
 
     float vertices[] = {
         // Front face
@@ -191,28 +200,44 @@ int main() {
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        shader.use();
-        
         texture.bind();
-                
+        
+        float radius = 300.0f;
+        float time = glfwGetTime() / 5;
+        glm::vec3 sunPos(radius * cos(time), 100.0f, radius * sin(time));
+        
         glm::mat4 view = glm::lookAt(camera.pos, camera.pos + camera.front, camera.up);
-        glm::mat4 projection = glm::perspective(glm::radians(camera.fov), 800.0f / 600.0f, 0.1f, 1000.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+        shader.use();
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
         shader.setVec3("viewPos", camera.pos);
         shader.setVec3("lightColor", lightColor);
-
-        /*float radius = 300.0f;
-        float time = glfwGetTime() / 5;
-        glm::vec3 sunPos(radius * cos(time), 100.0f, radius * sin(time));*/
-        shader.setVec3("lightPos", 0, 200, 0);
+        shader.setVec3("lightPos", sunPos);
 
         world.render(shader);
 
+        modelShader.use();
+        modelShader.setMat4("view", view);
+        modelShader.setMat4("projection", projection);
+        modelShader.setVec3("viewPos", camera.pos);
+        modelShader.setVec3("lightColor", lightColor);
+        modelShader.setVec3("lightPos", sunPos);
+
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(16.5f, 135.0f, 0.5f));
-        shader.setMat4("model", model);
-        backpack.draw(shader);
+        modelShader.setMat4("model", model);
+        backpack.draw(modelShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(10.5f, 135.0f, 0.5f));
+        modelShader.setMat4("model", model);
+        monkey.draw(modelShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-10.5f, 135.0f, 0.5f));
+        modelShader.setMat4("model", model);
+        helicopter.draw(modelShader);
 
         Ray ray(camera.pos, camera.front);
         auto raycastResult = ray.cast(world, 10.0f);
