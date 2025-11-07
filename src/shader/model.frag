@@ -16,6 +16,7 @@ uniform Material material;
 uniform vec3 lightColor;
 uniform vec3 lightPos;
 uniform vec3 viewPos;
+uniform bool hasTexture;
 
 void main() {
     float ambientStrength = 0.1;
@@ -32,7 +33,10 @@ void main() {
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = specularStrength * spec * lightColor;
 
-    vec4 texColor = texture(material.texture_diffuse1, TexCoord);
+    vec4 texColor = vec4(1.0);
+    if (hasTexture)
+        texColor = texture(material.texture_diffuse1, TexCoord);
+
     if (texColor.a < 0.01)
         discard;
 

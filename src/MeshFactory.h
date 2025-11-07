@@ -1,13 +1,9 @@
-//
-// Created by samuel on 11/7/25.
-//
-
-#ifndef OPENGLDEMO_MESHFACTORY_H
-#define OPENGLDEMO_MESHFACTORY_H
-
+#pragma once
+#include "Mesh.h"
 
 class MeshFactory {
+public:
+    static Mesh plane(float width, float height);
+    static Mesh cube(float size);
+    static Mesh sphere(float radius, int segments);
 };
-
-
-#endif //OPENGLDEMO_MESHFACTORY_H

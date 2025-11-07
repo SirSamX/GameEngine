@@ -34,7 +34,7 @@ Texture::Texture(const char* path) {
     stbi_image_free(data);
 }
 
-void Texture::bind() {
+void Texture::bind() const {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, id);
 }

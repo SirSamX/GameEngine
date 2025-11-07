@@ -6,7 +6,7 @@
 
 class Model {
 public:
-    Model(const char *path, unsigned int flags = 0) {
+    explicit Model(const char *path, unsigned int flags = 0) {
         loadModel(path, flags);
     }
     void draw(Shader &shader);

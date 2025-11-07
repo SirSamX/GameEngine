@@ -1,6 +1,5 @@
 #pragma once
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <optional>
 
 
@@ -16,7 +15,7 @@ public:
 
     Ray(glm::vec3 origin, glm::vec3 direction) : origin(origin), direction(direction) {}
 
-    std::optional<RaycastResult> cast(World& world, float maxDist) {
+    std::optional<RaycastResult> cast(World& world, float maxDist) const {
         glm::ivec3 currentBlock = glm::floor(origin);
         glm::vec3 step = glm::sign(direction);
         glm::vec3 tMax = (glm::vec3(currentBlock) + (step + 1.0f) / 2.0f - origin) / direction;
@@ -30,21 +29,21 @@ public:
 
             if (tMax.x < tMax.y) {
                 if (tMax.x < tMax.z) {
-                    currentBlock.x += step.x;
+                    currentBlock.x += static_cast<int>(step.x);
                     tMax.x += tDelta.x;
                     face = glm::ivec3(-step.x, 0, 0);
                 } else {
-                    currentBlock.z += step.z;
+                    currentBlock.z += static_cast<int>(step.z);
                     tMax.z += tDelta.z;
                     face = glm::ivec3(0, 0, -step.z);
                 }
             } else {
                 if (tMax.y < tMax.z) {
-                    currentBlock.y += step.y;
+                    currentBlock.y += static_cast<int>(step.y);
                     tMax.y += tDelta.y;
                     face = glm::ivec3(0, -step.y, 0);
                 } else {
-                    currentBlock.z += step.z;
+                    currentBlock.z += static_cast<int>(step.z);
                     tMax.z += tDelta.z;
                     face = glm::ivec3(0, 0, -step.z);
                 }

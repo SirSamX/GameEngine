@@ -1,8 +1,6 @@
 #pragma once
 #include <unordered_map>
-#include <cstdint>
 #include <GLFW/glfw3.h>
-#include "Camera.h"
 
 class Input {
 public:

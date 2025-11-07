@@ -1,5 +1,7 @@
+#pragma once
 #include <functional>
 #include <GLFW/glfw3.h>
+#include <utility>
 #include <vector>
 
 struct TimedTask {
@@ -11,11 +13,11 @@ struct TimedTask {
 class Scheduler {
 public:
     void addTask(float interval, std::function<void()> task) {
-        tasks.push_back({interval, 0.0f, task});
+        tasks.push_back({interval, 0.0f, std::move(task)});
     }
 
     void update() {
-        float now = static_cast<float>(glfwGetTime());
+        const auto now = static_cast<float>(glfwGetTime());
         for (auto &t : tasks) {
             if (now - t.lastRun >= t.interval) {
                 t.task();

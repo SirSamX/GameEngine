@@ -6,13 +6,13 @@
 
 void Model::draw(Shader &shader)
 {
-    for(unsigned int i = 0; i < meshes.size(); i++)
-        meshes[i].draw(shader);
+    for (auto & mesh : meshes)
+        mesh.draw(shader);
 }  
 
 void Model::loadModel(std::string path, unsigned int flags) {
     Assimp::Importer import;
-    const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | flags);
+    const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | flags);
     
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
@@ -110,75 +110,8 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
     }
 
-    return Mesh(vertices, indices, textures);
+    return {vertices, indices, textures};
 }
-
-/*
-Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
-    std::vector<MeshTexture> textures;
-
-    for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
-        Vertex vertex;
-        glm::vec3 vector;
-
-        vector.x = mesh->mVertices[i].x;
-        vector.y = mesh->mVertices[i].y;
-        vector.z = mesh->mVertices[i].z;
-        vertex.Position = vector;
-
-        if (mesh->HasNormals()) {
-            vector.x = mesh->mNormals[i].x;
-            vector.y = mesh->mNormals[i].y;
-            vector.z = mesh->mNormals[i].z;
-            vertex.Normal = vector;
-        }
-
-        if (mesh->mTextureCoords[0]) {
-            glm::vec2 vec;
-            vec.x = mesh->mTextureCoords[0][i].x; 
-            vec.y = mesh->mTextureCoords[0][i].y;
-            vertex.TexCoords = vec;
-
-            vector.x = mesh->mTangents[i].x;
-            vector.y = mesh->mTangents[i].y;
-            vector.z = mesh->mTangents[i].z;
-            vertex.Tangent = vector;
-
-            vector.x = mesh->mBitangents[i].x;
-            vector.y = mesh->mBitangents[i].y;
-            vector.z = mesh->mBitangents[i].z;
-            vertex.Bitangent = vector;
-        } else
-            vertex.TexCoords = glm::vec2(0.0f, 0.0f);
-
-        vertices.push_back(vertex);
-    }
-
-    for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-        aiFace face = mesh->mFaces[i];
-
-        for (unsigned int j = 0; j < face.mNumIndices; j++)
-            indices.push_back(face.mIndices[j]);
-    }
-
-    aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];    
-
-    std::vector<MeshTexture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-    textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-
-    std::vector<MeshTexture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-    textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-
-    std::vector<MeshTexture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
-    textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-
-    std::vector<MeshTexture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
-    textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
-    
-    return Mesh(vertices, indices, textures);
-}*/
 
 std::vector<MeshTexture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName) {
     std::vector<MeshTexture> textures;
@@ -187,9 +120,9 @@ std::vector<MeshTexture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureT
         mat->GetTexture(type, i, &str);
 
         bool skip = false;
-        for (unsigned int j = 0; j < textures_loaded.size(); j++) {
-            if (std::strcmp(textures_loaded[j].path.data(), str.C_Str()) == 0) {
-                textures.push_back(textures_loaded[j]);
+        for (auto & j : textures_loaded) {
+            if (std::strcmp(j.path.data(), str.C_Str()) == 0) {
+                textures.push_back(j);
                 skip = true;
                 break;
             }

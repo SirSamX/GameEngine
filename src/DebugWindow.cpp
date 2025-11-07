@@ -3,7 +3,6 @@
 #include "imgui_impl_opengl3.h"
 #include <algorithm>
 #include <format>
-#include <cstdio>
 #include <GLFW/glfw3.h>
 
 void DebugWindow::init(GLFWwindow* window) {
@@ -46,9 +45,9 @@ void DebugWindow::render(float deltaTime, float& cameraSpeed, int& renderDistanc
     if (ImGui::BeginTabBar("TabBar")) {
         if (ImGui::BeginTabItem("General")) {
             ImGui::Text("Sky Color:");
-            ImGui::ColorEdit3("##skyColor", (float*)&clearColor);
+            ImGui::ColorEdit3("##skyColor", &clearColor[0]);
             ImGui::Text("Light Color:");
-            ImGui::ColorEdit3("##lightColor", (float*)&lightColor);
+            ImGui::ColorEdit3("##lightColor", &lightColor[0]);
             ImGui::Text("Speed");
             ImGui::SliderFloat("Speed", &cameraSpeed, 0, 100);
             ImGui::Text(std::format("Camera Pos: X:{:.1f} Y:{:.1f} Z:{:.1f}", cameraPos.x, cameraPos.y, cameraPos.z).c_str());
@@ -64,8 +63,8 @@ void DebugWindow::render(float deltaTime, float& cameraSpeed, int& renderDistanc
             ImGui::Text(std::format("FPS: {:.1f}", fpsValues[fpsIndex]).c_str());
 
             float sum = 0.0f;
-            for (int i = 0; i < FPS_HISTORY_SIZE; ++i)
-                sum += fpsValues[i];
+            for (float fpsValue : fpsValues)
+                sum += fpsValue;
 
             auto [minIt, maxIt] = std::minmax_element(fpsValues, fpsValues + FPS_HISTORY_SIZE);
             char overlay[32];

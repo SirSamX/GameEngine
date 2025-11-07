@@ -1,8 +1,8 @@
 #include "World.h"
+#include <cmath>
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
-#include <cmath>
 
 World::World() {
     worker = std::thread(&World::worldGenThread, this);
@@ -25,7 +25,7 @@ void World::update(const glm::vec3& cameraPos, int distance) {
     }
 }
 
-void World::render(Shader& shader) {
+void World::render(const Shader& shader) {
     std::lock_guard<std::recursive_mutex> lock(chunksMutex);
     for (auto& pair : chunks) {
         if (pair.second.meshDirty && pair.second.dataReady) {
@@ -37,11 +37,9 @@ void World::render(Shader& shader) {
     }
 }
 
-
-
 uint8_t World::getBlock(const glm::ivec3& pos) const {
-    int chunkX = static_cast<int>(floor(static_cast<float>(pos.x) / Chunk::WIDTH));
-    int chunkZ = static_cast<int>(floor(static_cast<float>(pos.z) / Chunk::DEPTH));
+    int chunkX = static_cast<int>(std::floor(static_cast<float>(pos.x) / Chunk::WIDTH));
+    int chunkZ = static_cast<int>(std::floor(static_cast<float>(pos.z) / Chunk::DEPTH));
     std::lock_guard<std::recursive_mutex> lock(chunksMutex);
     auto it = chunks.find(glm::ivec3(chunkX, 0, chunkZ));
     if (it != chunks.end()) {
@@ -53,8 +51,8 @@ uint8_t World::getBlock(const glm::ivec3& pos) const {
 }
 
 void World::setBlock(const glm::ivec3& pos, uint8_t block) {
-    int chunkX = static_cast<int>(floor(static_cast<float>(pos.x) / Chunk::WIDTH));
-    int chunkZ = static_cast<int>(floor(static_cast<float>(pos.z) / Chunk::DEPTH));
+    int chunkX = static_cast<int>(std::floor(static_cast<float>(pos.x) / Chunk::WIDTH));
+    int chunkZ = static_cast<int>(std::floor(static_cast<float>(pos.z) / Chunk::DEPTH));
     std::lock_guard<std::recursive_mutex> lock(chunksMutex);
     auto it = chunks.find(glm::ivec3(chunkX, 0, chunkZ));
     if (it != chunks.end()) {
@@ -90,15 +88,15 @@ void World::worldGenThread() {
         glm::ivec2 chunkPos(task.first, task.second);
         {
             std::lock_guard<std::recursive_mutex> lock(chunksMutex);
-            if (chunks.count(glm::ivec3(chunkPos.x, 0, chunkPos.y))) continue;
+            if (chunks.contains(glm::ivec3(chunkPos.x, 0, chunkPos.y))) continue;
         }
 
-        auto start = std::chrono::high_resolution_clock::now();
+        //auto start = std::chrono::high_resolution_clock::now();
         Chunk c(chunkPos);
         c.generateMeshData(*this);
-        auto end = std::chrono::high_resolution_clock::now();
+        //auto end = std::chrono::high_resolution_clock::now();
 
-        std::chrono::duration<double, std::milli> ms = end - start;
+        //std::chrono::duration<double, std::milli> ms = end - start;
         //std::cout << "Chunk (" << task.first << ", " << task.second << ") generated in " << ms.count() << " ms\n";
 
         {

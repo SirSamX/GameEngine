@@ -29,13 +29,12 @@ public:
     std::unordered_map<glm::ivec3, Chunk> chunks;
     World();
     ~World();
-    void render(Shader& shader);
+    void render(const Shader& shader);
     void update(const glm::vec3& cameraPos, int distance);
 
     uint8_t getBlock(const glm::ivec3& pos) const;
     void setBlock(const glm::ivec3& pos, uint8_t block);
     void markChunkDirty(int x, int z);
-    void loadChunk(int x, int z);
     void loadChunkAsync(int x, int z);
 
 private:

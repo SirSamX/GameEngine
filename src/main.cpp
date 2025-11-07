@@ -13,11 +13,12 @@
 #include "Texture.h"
 #include "Scheduler.h"
 #include "World.h"
-#include "Block.h"
 #include "DebugWindow.h"
 #include "Ray.h"
 #include "Camera.h"
+#include "imgui.h"
 #include "Input.h"
+#include "MeshFactory.h"
 #include "Model.h"
 
 float deltaTime = 0.0f;
@@ -32,20 +33,37 @@ bool vsyncEnabled = true;
 glm::vec3 clearColor(0.45f, 0.55f, 0.60f);
 glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
+struct Object {
+    Mesh* mesh = nullptr;
+    Model* model = nullptr;
+    glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 rotation = glm::vec3(0.0f);
+    glm::vec3 scale = glm::vec3(1.0f);
+    bool useModelMatrix = false;
+};
+
+std::vector<Object> sceneObjects;
+
+void toggleCursorLock(GLFWwindow *window) {
+    camera.cursorLock = !camera.cursorLock;
+    if (camera.cursorLock) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        camera.firstMouse = true;
+        ImGuiIO& io = ImGui::GetIO();
+        io.MouseDrawCursor = false;
+    } else {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        ImGuiIO& io = ImGui::GetIO();
+        io.MouseDrawCursor = true;
+    }
+}
+
 void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow& debugWindow) {
     Input::updateKeys(window);
 
-    // Exit
-    if (Input::keyJustPressed(GLFW_KEY_ESCAPE)) {
-        camera.cursorLock = !camera.cursorLock;
-        if (camera.cursorLock) {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        } else {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        }
-    }
+    if (Input::keyJustPressed(GLFW_KEY_ESCAPE))
+        toggleCursorLock(window);
 
-    // Debug Keys
     if (Input::keyJustPressed(GLFW_KEY_X))
         glfwSetWindowShouldClose(window, true);
     if (Input::keyJustPressed(GLFW_KEY_F1)) {
@@ -71,7 +89,7 @@ void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow&
         double t = (glfwGetTime() - startTime) / 0.5;
         t = t > 1 ? 1 : t;        // clamp
         t = t*t*(3-2*t);          // smoothstep
-        camera.fov = 45 + t * (fovTarget - 45);
+        camera.fov = 45.0f + t * (fovTarget - 45);
     }
     if (Input::keyJustReleased(GLFW_KEY_C))
         camera.fov = 45.0f;
@@ -79,10 +97,9 @@ void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow&
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (action == GLFW_PRESS) {
-        World* world = static_cast<World*>(glfwGetWindowUserPointer(window));
+        auto* world = static_cast<World*>(glfwGetWindowUserPointer(window));
         Ray ray(camera.pos, camera.front);
-        auto raycastResult = ray.cast(*world, 10.0f);
-        if (raycastResult) {
+        if (auto raycastResult = ray.cast(*world, 10.0f)) {
             if (button == GLFW_MOUSE_BUTTON_LEFT) {
                 world->setBlock(raycastResult->blockPos, 0);
             }
@@ -150,9 +167,21 @@ int main() {
     Texture texture("../assets/atlas.png");
     shader.setInt("texture1", 0);
     Shader selectionShader("../src/shader/selection.vert", "../src/shader/selection.frag");
+
     Model backpack("../assets/models/backpack/backpack.obj", aiProcess_FlipUVs);
     Model monkey("../assets/models/monkey/monkey.obj");
-    Model helicopter("../assets/models/tiger/Tiger_I.obj", aiProcess_GenNormals);
+    Model tank("../assets/models/tiger/Tiger_I.obj");
+    Mesh plane = MeshFactory::plane(5,5);
+    Mesh cube = MeshFactory::cube(1);
+    Mesh sphere = MeshFactory::sphere(5,20);
+
+    sceneObjects.push_back({ &plane, nullptr, glm::vec3(-15.5f, 135.0f, 5.5f) });
+    sceneObjects.push_back({ &cube,  nullptr, glm::vec3(-10.5f, 135.0f, 15.5f) });
+    sceneObjects.push_back({ &sphere,nullptr, glm::vec3(-20.5f, 135.0f, -20.5f) });
+    sceneObjects.push_back({ nullptr, &backpack, glm::vec3(16.5f, 135.0f, 0.5f) });
+    sceneObjects.push_back({ nullptr, &monkey,   glm::vec3(10.5f, 135.0f, 0.5f) });
+    sceneObjects.push_back({ nullptr, &tank,     glm::vec3(-10.5f, 135.0f, 0.5f) });
+
 
     float vertices[] = {
         // Front face
@@ -177,16 +206,16 @@ int main() {
     glBindVertexArray(selectionVAO);
     glBindBuffer(GL_ARRAY_BUFFER, selectionVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), nullptr);
     glEnableVertexAttribArray(0);
 
     DebugWindow debugWindow;
-    debugWindow.init(window);
+    DebugWindow::init(window);
     
     Scheduler scheduler;
 
     while (!glfwWindowShouldClose(window)) {
-        float currentFrame = static_cast<float>(glfwGetTime());
+        float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
@@ -204,10 +233,10 @@ int main() {
         
         float radius = 300.0f;
         float time = glfwGetTime() / 5;
-        glm::vec3 sunPos(radius * cos(time), 100.0f, radius * sin(time));
+        glm::vec3 sunPos(radius * std::cos(time), 100.0f, radius * std::sin(time));
         
         glm::mat4 view = glm::lookAt(camera.pos, camera.pos + camera.front, camera.up);
-        glm::mat4 projection = glm::perspective(glm::radians(camera.fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.fov), static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT), 0.1f, 1000.0f);
         shader.use();
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
@@ -224,28 +253,31 @@ int main() {
         modelShader.setVec3("lightColor", lightColor);
         modelShader.setVec3("lightPos", sunPos);
 
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(16.5f, 135.0f, 0.5f));
-        modelShader.setMat4("model", model);
-        backpack.draw(modelShader);
+        for (auto& obj : sceneObjects) {
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), obj.position);
+            model = glm::rotate(model, glm::radians(obj.rotation.x), glm::vec3(1,0,0));
+            model = glm::rotate(model, glm::radians(obj.rotation.y), glm::vec3(0,1,0));
+            model = glm::rotate(model, glm::radians(obj.rotation.z), glm::vec3(0,0,1));
+            model = glm::scale(model, obj.scale);
 
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(10.5f, 135.0f, 0.5f));
-        modelShader.setMat4("model", model);
-        monkey.draw(modelShader);
+            modelShader.setMat4("model", model);
 
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-10.5f, 135.0f, 0.5f));
-        modelShader.setMat4("model", model);
-        helicopter.draw(modelShader);
+            if (obj.mesh) {
+                modelShader.setBool("hasTexture", !obj.mesh->textures.empty());
+                obj.mesh->draw(modelShader);
+            } else if (obj.model) {
+                modelShader.setBool("hasTexture", true);
+                obj.model->draw(modelShader);
+            }
+        }
+
 
         Ray ray(camera.pos, camera.front);
-        auto raycastResult = ray.cast(world, 10.0f);
-        if (raycastResult) {
+        if (auto raycastResult = ray.cast(world, 10.0f)) {
             selectionShader.use();
             selectionShader.setMat4("view", view);
             selectionShader.setMat4("projection", projection);
-            glm::mat4 model = glm::mat4(1.0f);
+            auto model = glm::mat4(1.0f);
             model = glm::translate(model, glm::vec3(raycastResult->blockPos) + glm::vec3(0.5f));
             model = glm::scale(model, glm::vec3(1.01f));
             selectionShader.setMat4("model", model);
@@ -257,20 +289,20 @@ int main() {
         }
 
         
-        debugWindow.newFrame();
+        DebugWindow::newFrame();
         debugWindow.render(deltaTime, camera.speed, renderDistance, vsyncEnabled, clearColor, camera.pos, camera.front, lightColor);
         ImGui::GetBackgroundDrawList()->AddText(
             ImVec2(20, 20),
             IM_COL32(255, 255, 255, 255),
             std::to_string(hotbarSlot).c_str()
         );
-        debugWindow.renderImGui();
+        DebugWindow::renderImGui();
         
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    debugWindow.shutdown();
+    DebugWindow::shutdown();
     
     glfwTerminate();
     return 0;
