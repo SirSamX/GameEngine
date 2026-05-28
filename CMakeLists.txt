@@ -9,15 +9,29 @@ find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(assimp REQUIRED)
 
-file(GLOB_RECURSE SRC_FILES
-    "${CMAKE_SOURCE_DIR}/src/*.cpp"
-    "${CMAKE_SOURCE_DIR}/src/*.h"
-    "${CMAKE_SOURCE_DIR}/src/RaycastResult.h"
-    "${CMAKE_SOURCE_DIR}/lib/*.cpp"
-    "${CMAKE_SOURCE_DIR}/lib/imgui/*.cpp"
+add_executable(OpenGLDemo
+        src/main.cpp
+        src/engine/Camera.cpp
+        src/engine/DebugWindow.cpp
+        src/engine/Input.cpp
+        src/engine/Mesh.cpp
+        src/engine/MeshFactory.cpp
+        src/engine/Model.cpp
+        src/engine/Shader.cpp
+        src/engine/Texture.cpp
+        src/world/Chunk.cpp
+        src/world/World.cpp
+        lib/stb_image.cpp
+        lib/imgui/imgui.cpp
+        lib/imgui/imgui_demo.cpp
+        lib/imgui/imgui_draw.cpp
+        lib/imgui/imgui_impl_glfw.cpp
+        lib/imgui/imgui_impl_opengl3.cpp
+        lib/imgui/imgui_tables.cpp
+        lib/imgui/imgui_widgets.cpp
+        src/engine/Time.cpp
+        src/engine/Time.h
 )
-
-add_executable(OpenGLDemo ${SRC_FILES})
 
 target_include_directories(OpenGLDemo PRIVATE
     ${CMAKE_SOURCE_DIR}/src

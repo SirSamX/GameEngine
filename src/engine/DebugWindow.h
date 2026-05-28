@@ -9,9 +9,9 @@ public:
     static void init(GLFWwindow* window);
     static void shutdown();
     static void newFrame();
-    void render(float deltaTime, float& cameraSpeed, int& renderDistance, bool& vsyncEnabled, glm::vec3& clearColor, glm::vec3& cameraPos, glm::vec3& cameraFront, glm::vec3& lightColor);
+    void render(float& cameraSpeed, int& renderDistance, bool& vsyncEnabled, glm::vec3& clearColor, const glm::vec3& cameraPos, const glm::vec3& cameraFront, glm::vec3& lightColor);
     static void renderImGui();
-    void updateFps(float newDeltaTime);
+    void updateFps();
 
 private:
     static constexpr int FPS_HISTORY_SIZE = 60;

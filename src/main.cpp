@@ -7,22 +7,21 @@
 #include <iostream>
 #include <format>
 #include <unordered_map>
-#include <filesystem>
 
-#include "Shader.h"
-#include "Texture.h"
-#include "Scheduler.h"
-#include "World.h"
-#include "DebugWindow.h"
-#include "Ray.h"
-#include "Camera.h"
+#include "engine/Shader.h"
+#include "engine/Texture.h"
+#include "engine/Scheduler.h"
+#include "world/World.h"
+#include "engine/DebugWindow.h"
+#include "engine/Ray.h"
+#include "engine/Camera.h"
 #include "imgui.h"
-#include "Input.h"
-#include "MeshFactory.h"
-#include "Model.h"
+#include "engine/Input.h"
+#include "engine/MeshFactory.h"
+#include "engine/Model.h"
+#include "engine/Time.h"
 
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
+Time gameTime;
 
 bool wireframe = false;
 Camera camera;
@@ -39,7 +38,6 @@ struct Object {
     glm::vec3 position = glm::vec3(0.0f);
     glm::vec3 rotation = glm::vec3(0.0f);
     glm::vec3 scale = glm::vec3(1.0f);
-    bool useModelMatrix = false;
 };
 
 std::vector<Object> sceneObjects;
@@ -80,13 +78,13 @@ void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow&
     if (Input::keyJustPressed(GLFW_KEY_R))
         world.chunks.clear();
 
-    static double startTime = 0;
+    static float startTime = 0.0f;
 
     if (Input::keyJustPressed(GLFW_KEY_C))
-        startTime = glfwGetTime();
+        startTime = gameTime.getTotalTime();
 
     if (Input::keyPressed(GLFW_KEY_C)) {
-        double t = (glfwGetTime() - startTime) / 0.5;
+        float t = (gameTime.getTotalTime() - startTime) / 0.5f;
         t = t > 1 ? 1 : t;        // clamp
         t = t*t*(3-2*t);          // smoothstep
         camera.fov = 45.0f + t * (fovTarget - 45);
@@ -98,7 +96,7 @@ void processInput(GLFWwindow *window, Shader& shader, World& world, DebugWindow&
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (action == GLFW_PRESS) {
         auto* world = static_cast<World*>(glfwGetWindowUserPointer(window));
-        Ray ray(camera.pos, camera.front);
+        const Ray ray(camera.pos, camera.front);
         if (auto raycastResult = ray.cast(*world, 10.0f)) {
             if (button == GLFW_MOUSE_BUTTON_LEFT) {
                 world->setBlock(raycastResult->blockPos, 0);
@@ -111,22 +109,22 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     }
 }
 
-void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
-    camera.mouseLook(xposIn, yposIn);
+void mouse_callback(GLFWwindow* window, const double xPosIn, const double yPosIn) {
+    camera.mouseLook(xPosIn, yPosIn);
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+void scroll_callback(GLFWwindow* window, double xOffset, double yOffset) {
     if (Input::keyPressed(GLFW_KEY_C)) {
-        fovTarget = std::clamp(fovTarget - yoffset * 1.0, 1.0, 40.0);
+        fovTarget = static_cast<float>(std::clamp(fovTarget - yOffset * 1.0, 1.0, 40.0));
     } else {
-        hotbarSlot = (hotbarSlot + static_cast<int>(yoffset) - 1 + 9) % 9 + 1;
+        hotbarSlot = (hotbarSlot + static_cast<int>(yOffset) + 9) % 9;
     }
 }
 
 unsigned int SCR_WIDTH = 800;
 unsigned int SCR_HEIGHT = 600;
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+void framebuffer_size_callback(GLFWwindow* window, const int width, const int height) {
     glViewport(0, 0, width, height);
     SCR_WIDTH = width;
     SCR_HEIGHT = height;
@@ -138,7 +136,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    
+
     #ifdef __APPLE__
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     #endif
@@ -211,30 +209,28 @@ int main() {
 
     DebugWindow debugWindow;
     DebugWindow::init(window);
-    
+
     Scheduler scheduler;
 
     while (!glfwWindowShouldClose(window)) {
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+        gameTime.update();
 
-        debugWindow.updateFps(deltaTime);
+        debugWindow.updateFps();
         scheduler.update();
 
         processInput(window, shader, world, debugWindow);
         world.update(camera.pos, renderDistance);
-        camera.creativeMovement(deltaTime);
+        camera.creativeMovement();
 
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         texture.bind();
-        
+
         float radius = 300.0f;
-        float time = glfwGetTime() / 5;
-        glm::vec3 sunPos(radius * std::cos(time), 100.0f, radius * std::sin(time));
-        
+        float worldTime = gameTime.getTotalTime() / 5.0f;
+        glm::vec3 sunPos(radius * std::cos(worldTime), 100.0f, radius * std::sin(worldTime));
+
         glm::mat4 view = glm::lookAt(camera.pos, camera.pos + camera.front, camera.up);
         glm::mat4 projection = glm::perspective(glm::radians(camera.fov), static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT), 0.1f, 1000.0f);
         shader.use();
@@ -288,22 +284,22 @@ int main() {
             glLineWidth(1.0f);
         }
 
-        
+
         DebugWindow::newFrame();
-        debugWindow.render(deltaTime, camera.speed, renderDistance, vsyncEnabled, clearColor, camera.pos, camera.front, lightColor);
+        debugWindow.render(camera.speed, renderDistance, vsyncEnabled, clearColor, camera.pos, camera.front, lightColor);
         ImGui::GetBackgroundDrawList()->AddText(
             ImVec2(20, 20),
             IM_COL32(255, 255, 255, 255),
-            std::to_string(hotbarSlot).c_str()
+            std::to_string(hotbarSlot + 1).c_str()
         );
         DebugWindow::renderImGui();
-        
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
     DebugWindow::shutdown();
-    
+
     glfwTerminate();
     return 0;
 }

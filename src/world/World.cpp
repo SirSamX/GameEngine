@@ -26,7 +26,7 @@ void World::update(const glm::vec3& cameraPos, int distance) {
 }
 
 void World::render(const Shader& shader) {
-    std::lock_guard<std::recursive_mutex> lock(chunksMutex);
+    std::lock_guard lock(chunksMutex);
     for (auto& pair : chunks) {
         if (pair.second.meshDirty && pair.second.dataReady) {
             pair.second.generateMeshData(*this);
@@ -40,7 +40,7 @@ void World::render(const Shader& shader) {
 uint8_t World::getBlock(const glm::ivec3& pos) const {
     int chunkX = static_cast<int>(std::floor(static_cast<float>(pos.x) / Chunk::WIDTH));
     int chunkZ = static_cast<int>(std::floor(static_cast<float>(pos.z) / Chunk::DEPTH));
-    std::lock_guard<std::recursive_mutex> lock(chunksMutex);
+    std::lock_guard lock(chunksMutex);
     auto it = chunks.find(glm::ivec3(chunkX, 0, chunkZ));
     if (it != chunks.end()) {
         int localX = pos.x - chunkX * Chunk::WIDTH;
@@ -50,13 +50,14 @@ uint8_t World::getBlock(const glm::ivec3& pos) const {
     return 0;
 }
 
-void World::setBlock(const glm::ivec3& pos, uint8_t block) {
-    int chunkX = static_cast<int>(std::floor(static_cast<float>(pos.x) / Chunk::WIDTH));
-    int chunkZ = static_cast<int>(std::floor(static_cast<float>(pos.z) / Chunk::DEPTH));
-    std::lock_guard<std::recursive_mutex> lock(chunksMutex);
-    auto it = chunks.find(glm::ivec3(chunkX, 0, chunkZ));
+void World::setBlock(const glm::ivec3& pos, const uint8_t block) {
+    const int chunkX = static_cast<int>(std::floor(static_cast<float>(pos.x) / Chunk::WIDTH));
+    const int chunkZ = static_cast<int>(std::floor(static_cast<float>(pos.z) / Chunk::DEPTH));
+    std::lock_guard lock(chunksMutex);
+
+    const auto it = chunks.find(glm::ivec3(chunkX, 0, chunkZ));
     if (it != chunks.end()) {
-        int localX = pos.x - chunkX * Chunk::WIDTH;
+        const int localX = pos.x - chunkX * Chunk::WIDTH;
         int localZ = pos.z - chunkZ * Chunk::DEPTH;
         it->second.setBlock(localX, pos.y, localZ, block);
         it->second.meshDirty = true;
@@ -69,7 +70,7 @@ void World::setBlock(const glm::ivec3& pos, uint8_t block) {
 }
 
 void World::loadChunkAsync(int x, int z) {
-    std::lock_guard<std::mutex> lock(queueMutex);
+    std::lock_guard lock(queueMutex);
     loadQueue.emplace(x, z);
     cv.notify_one();
 }
@@ -78,7 +79,7 @@ void World::worldGenThread() {
     while (running) {
         std::pair<int,int> task;
         {
-            std::unique_lock<std::mutex> lock(queueMutex);
+            std::unique_lock lock(queueMutex);
             cv.wait(lock, [&]{ return !loadQueue.empty() || !running; });
             if (!running) break;
             task = loadQueue.front();
@@ -87,7 +88,7 @@ void World::worldGenThread() {
 
         glm::ivec2 chunkPos(task.first, task.second);
         {
-            std::lock_guard<std::recursive_mutex> lock(chunksMutex);
+            std::lock_guard lock(chunksMutex);
             if (chunks.contains(glm::ivec3(chunkPos.x, 0, chunkPos.y))) continue;
         }
 
@@ -100,7 +101,7 @@ void World::worldGenThread() {
         //std::cout << "Chunk (" << task.first << ", " << task.second << ") generated in " << ms.count() << " ms\n";
 
         {
-            std::lock_guard<std::recursive_mutex> lock(chunksMutex);
+            std::lock_guard lock(chunksMutex);
             chunks.emplace(glm::ivec3(chunkPos.x, 0, chunkPos.y), std::move(c));
 
             auto markDirty = [&](int x, int z) {

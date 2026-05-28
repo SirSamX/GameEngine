@@ -5,6 +5,8 @@
 #include <format>
 #include <GLFW/glfw3.h>
 
+#include "Time.h"
+
 void DebugWindow::init(GLFWwindow* window) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -25,19 +27,19 @@ void DebugWindow::newFrame() {
     ImGui::NewFrame();
 }
 
-void DebugWindow::updateFps(float newDeltaTime) {
+void DebugWindow::updateFps() {
     frameCount++;
-    if (glfwGetTime() - lastFPSUpdate >= 0.5f) {
-        float fps = frameCount / (glfwGetTime() - lastFPSUpdate);
+    if (gameTime.getTotalTime() - lastFPSUpdate >= 0.5f) {
+        const float fps = static_cast<float>(frameCount) / (gameTime.getTotalTime() - lastFPSUpdate);
         fpsValues[fpsIndex] = fps;
         fpsIndex = (fpsIndex + 1) % FPS_HISTORY_SIZE;
 
-        lastFPSUpdate = static_cast<float>(glfwGetTime());
+        lastFPSUpdate = gameTime.getTotalTime();
         frameCount = 0;
     }
 }
 
-void DebugWindow::render(float deltaTime, float& cameraSpeed, int& renderDistance, bool& vsyncEnabled, glm::vec3& clearColor, glm::vec3& cameraPos, glm::vec3& cameraFront, glm::vec3& lightColor) {
+void DebugWindow::render(float& cameraSpeed, int& renderDistance, bool& vsyncEnabled, glm::vec3& clearColor, const glm::vec3& cameraPos, const glm::vec3& cameraFront, glm::vec3& lightColor) {
     if (!enabled) return;
 
     ImGui::Begin("Debug Window", nullptr, ImGuiWindowFlags_NoTitleBar);
@@ -50,8 +52,8 @@ void DebugWindow::render(float deltaTime, float& cameraSpeed, int& renderDistanc
             ImGui::ColorEdit3("##lightColor", &lightColor[0]);
             ImGui::Text("Speed");
             ImGui::SliderFloat("Speed", &cameraSpeed, 0, 100);
-            ImGui::Text(std::format("Camera Pos: X:{:.1f} Y:{:.1f} Z:{:.1f}", cameraPos.x, cameraPos.y, cameraPos.z).c_str());
-            ImGui::Text(std::format("Camera Front: X:{:.1f} Y:{:.1f} Z:{:.1f}", cameraFront.x, cameraFront.y, cameraFront.z).c_str());
+            ImGui::Text("Camera Pos: X:%.1f Y:%.1f Z:%.1f", cameraPos.x, cameraPos.y, cameraPos.z);
+            ImGui::Text("Camera Front: X:%.1f Y:%.1f Z:%.1f", cameraFront.x, cameraFront.y, cameraFront.z);
             ImGui::EndTabItem();
         }
 
@@ -59,11 +61,11 @@ void DebugWindow::render(float deltaTime, float& cameraSpeed, int& renderDistanc
             if (ImGui::Checkbox("VSync", &vsyncEnabled))
                 glfwSwapInterval(vsyncEnabled ? 1 : 0);
 
-            ImGui::Text(std::format("DeltaTime: {:.6f}", deltaTime).c_str());
-            ImGui::Text(std::format("FPS: {:.1f}", fpsValues[fpsIndex]).c_str());
+            ImGui::Text("DeltaTime: %.6f", gameTime.getDeltaTime());
+            ImGui::Text("FPS: %.1f", fpsValues[fpsIndex]);
 
             float sum = 0.0f;
-            for (float fpsValue : fpsValues)
+            for (const float fpsValue : fpsValues)
                 sum += fpsValue;
 
             auto [minIt, maxIt] = std::minmax_element(fpsValues, fpsValues + FPS_HISTORY_SIZE);

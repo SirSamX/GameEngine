@@ -3,8 +3,8 @@
 #include <fstream>
 #include <sstream>
 
-Shader::Shader(const char* vPath, const char* fPath)
-    : vertexPath(vPath), fragmentPath(fPath)
+Shader::Shader(const char* vertexPath, const char* fragmentPath)
+    : vertexPath(vertexPath), fragmentPath(fragmentPath)
 {
     compileShaders();
 }
@@ -98,7 +98,7 @@ void Shader::setMat4(const std::string &name, const glm::mat4 &mat) const {
     glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
 }
 
-void Shader::checkCompileErrors(GLuint shader, std::string type) {
+void Shader::checkCompileErrors(const GLuint shader, const std::string &type) {
     GLint success;
     GLchar infoLog[1024];
     if(type != "PROGRAM") {

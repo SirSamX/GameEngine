@@ -4,13 +4,12 @@
 #include <iostream>
 #include "Texture.h"
 
-void Model::draw(Shader &shader)
-{
+void Model::draw(const Shader &shader) const {
     for (auto & mesh : meshes)
         mesh.draw(shader);
 }  
 
-void Model::loadModel(std::string path, unsigned int flags) {
+void Model::loadModel(const std::string& path, const unsigned int flags) {
     Assimp::Importer import;
     const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | flags);
     
@@ -22,7 +21,7 @@ void Model::loadModel(std::string path, unsigned int flags) {
     processNode(scene->mRootNode, scene);
 }
 
-void Model::processNode(aiNode *node, const aiScene *scene) {
+void Model::processNode(const aiNode *node, const aiScene *scene) {
     for (unsigned int i = 0; i < node->mNumMeshes; i++) {
         aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
         meshes.push_back(processMesh(mesh, scene));
@@ -113,7 +112,7 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene) {
     return {vertices, indices, textures};
 }
 
-std::vector<MeshTexture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName) {
+std::vector<MeshTexture> Model::loadMaterialTextures(const aiMaterial *mat, const aiTextureType type, const std::string &typeName) {
     std::vector<MeshTexture> textures;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
         aiString str;

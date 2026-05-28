@@ -5,7 +5,7 @@
 
 class Shader {
 public:
-    unsigned int ID;
+    unsigned int ID{};
 
     Shader(const char* vertexPath, const char* fragmentPath);
     void reload();
@@ -28,5 +28,5 @@ private:
     const char* vertexPath;
     const char* fragmentPath;
     void compileShaders();
-    void checkCompileErrors(GLuint shader, std::string type);
+    static void checkCompileErrors(GLuint shader, const std::string &type);
 };

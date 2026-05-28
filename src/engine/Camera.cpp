@@ -1,12 +1,11 @@
 #include "Camera.h"
 #include "Input.h"
+#include "Time.h"
 
-Camera::Camera() {
+Camera::Camera() = default;
 
-}
-
-void Camera::creativeMovement(float deltaTime) {
-    float camSpeed = speed * deltaTime;
+void Camera::creativeMovement() {
+    float camSpeed = speed * gameTime.getDeltaTime();
     if (Input::keyPressed(GLFW_KEY_W))
         pos += camSpeed * front;
     if (Input::keyPressed(GLFW_KEY_S))
@@ -21,29 +20,29 @@ void Camera::creativeMovement(float deltaTime) {
         pos -= camSpeed * up;
 }
 
-void Camera::mouseLook(double xposIn, double yposIn) {
+void Camera::mouseLook(const double xPosIn, const double yPosIn) {
     if (!cursorLock) return;
 
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
+    const auto xPos = static_cast<float>(xPosIn);
+    const auto yPos = static_cast<float>(yPosIn);
 
     if (firstMouse) {
-        lastX = xpos;
-        lastY = ypos;
+        lastX = xPos;
+        lastY = yPos;
         firstMouse = false;
     }
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
+    float xOffset = xPos - lastX;
+    float yOffset = lastY - yPos;
+    lastX = xPos;
+    lastY = yPos;
 
     float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
+    xOffset *= sensitivity;
+    yOffset *= sensitivity;
 
-    yaw += xoffset;
-    pitch += yoffset;
+    yaw += xOffset;
+    pitch += yOffset;
 
     if (pitch > 89.0f)
         pitch = 89.0f;
@@ -51,8 +50,8 @@ void Camera::mouseLook(double xposIn, double yposIn) {
         pitch = -89.0f;
 
     glm::vec3 direction;
-    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.y = sin(glm::radians(pitch));
-    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.x = glm::cos(glm::radians(yaw)) * glm::cos(glm::radians(pitch));
+    direction.y = glm::sin(glm::radians(pitch));
+    direction.z = glm::sin(glm::radians(yaw)) * glm::cos(glm::radians(pitch));
     front = glm::normalize(direction);
 }

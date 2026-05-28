@@ -7,16 +7,14 @@
 #include <queue>
 #include <condition_variable>
 #include "Chunk.h"
-#include "Shader.h"
+#include "../engine/Shader.h"
 
-namespace std {
-    template <>
-    struct hash<glm::ivec3> {
-        std::size_t operator()(const glm::ivec3& v) const {
-            return std::hash<int>()(v.x) ^ std::hash<int>()(v.y) ^ std::hash<int>()(v.z);
-        }
-    };
-}
+template <>
+struct std::hash<glm::ivec3> {
+    std::size_t operator()(const glm::ivec3& v) const noexcept {
+        return std::hash<int>()(v.x) ^ std::hash<int>()(v.y) ^ std::hash<int>()(v.z);
+    }
+};
 
 class World {
     mutable std::recursive_mutex chunksMutex;

@@ -21,14 +21,14 @@ public:
     std::vector<float> vertices;
     std::vector<unsigned int> indices;
 
-    Chunk(glm::ivec2 pos);
+    explicit Chunk(glm::ivec2 pos);
 
-    uint8_t getBlock(int x, int y, int z) const;
+    [[nodiscard]] uint8_t getBlock(int x, int y, int z) const;
     void setBlock(int x, int y, int z, uint8_t block);
 
     void generateMeshData(const World& world);
 
     void uploadMesh();
 
-    void render();
+    void render() const;
 };

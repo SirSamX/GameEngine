@@ -13,7 +13,7 @@ public:
     glm::vec3 origin;
     glm::vec3 direction;
 
-    Ray(glm::vec3 origin, glm::vec3 direction) : origin(origin), direction(direction) {}
+    Ray(const glm::vec3 origin, const glm::vec3 direction) : origin(origin), direction(direction) {}
 
     std::optional<RaycastResult> cast(World& world, float maxDist) const {
         glm::ivec3 currentBlock = glm::floor(origin);

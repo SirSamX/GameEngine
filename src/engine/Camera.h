@@ -1,6 +1,5 @@
 #pragma once
 #include <glm/glm.hpp>
-#include <GLFW/glfw3.h>
 
 class Camera {
 public:
@@ -17,8 +16,8 @@ public:
     bool cursorLock = true;
     bool firstMouse = true;
     
-    void creativeMovement(float deltaTime);
-    void mouseLook(double xposIn, double yposIn);
+    void creativeMovement();
+    void mouseLook(double xPosIn, double yPosIn);
 private:
     float lastX = 800.0f / 2.0;
     float lastY = 600.0 / 2.0;
